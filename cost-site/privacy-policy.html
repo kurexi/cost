@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Cost</title>
+<style>
+  :root { color-scheme: light dark; --fg: #1c1c1e; --dim: #6b6b70; --bg: #fff; --rule: #e5e5ea; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg: #f2f2f7; --dim: #9b9ba0; --bg: #131315; --rule: #2c2c2e; }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 6rem; max-width: 38rem;
+    background: var(--bg); color: var(--fg);
+    font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 .5rem; }
+  h2 { font-size: 1.15rem; margin: 2.5rem 0 .6rem; letter-spacing: -0.01em; }
+  h2 + p { margin-top: 0; }
+  p { margin: 0 0 1rem; }
+  .date { color: var(--dim); font-size: .95rem; margin-bottom: 2.5rem; }
+  .home { display: inline-block; margin-bottom: 2rem; color: var(--dim);
+          font-size: .95rem; text-decoration: none; }
+  .home:hover { color: var(--fg); }
+  strong { font-weight: 600; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 3rem 0; }
+</style>
+</head>
+<body>
+<!-- Remove this link if the landing page at ./ is not live yet: a privacy
+     policy that App Review opens must not contain a 404. -->
+<a class="home" href="./">&larr; Cost</a>
+<h1>Privacy Policy for Cost</h1>
+<p class="date">Last updated: [9th Sep, 2026]</p>
+<p>Cost does not collect your data. There is no account, no sign-in, no analytics, no advertising and no tracking. The developer operates no server and receives nothing about you or your spending.</p>
+<p>This policy explains where your data does live, and the few cases where the app hands something to Apple or to a server you choose yourself.</p>
+<h2>What Cost collects</h2>
+<p>Nothing. Cost contains no analytics or advertising software and no third-party code of any kind.</p>
+<h2>Where your data is kept</h2>
+<p><strong>On your device.</strong> Your spending records, categories, tags, notes, the knowledge base the app builds from your corrections, and the receipt images you share are stored in Cost&#x27;s own container on your device.</p>
+<p><strong>In your iCloud, if iCloud is switched on.</strong> Cost syncs your records through Apple&#x27;s CloudKit into the *private* database of your own Apple Account, so your iPhone and your Mac show the same ledger. That data is held by Apple under your account and is not accessible to the developer. Receipt images are not synced — they stay on the device they arrived on.</p>
+<p>Deleting the app removes the data on that device. The iCloud copy is managed where every app&#x27;s is: Settings &rarr; your name &rarr; iCloud.</p>
+<h2>How receipts are read</h2>
+<p>Receipt text is recognised on your device using Apple&#x27;s Vision framework, and interpreted on your device by Apple Intelligence. The receipt is not uploaded for analysis.</p>
+<h2>If you configure your own model server</h2>
+<p>Cost can instead send receipts to a large language model you host yourself (Settings &rarr; Local Model) — typically software such as Ollama or LM Studio on your own Mac or another machine on your network.</p>
+<p>If you turn this on, the <strong>text</strong> of a receipt is sent to the address you entered. Images are never sent: the app transcribes them on your device first and transmits only the resulting text. That address is your choice and under your control, and whatever happens to the data there is governed by the software you are running, not by Cost. The feature is off unless you configure it, and by default Cost only offers it where Apple Intelligence is unavailable.</p>
+<h2>Location</h2>
+<p>Location is optional, off by default, and attached to a spending record only when you tap to add it. Cost takes a single position fix at that moment; it never tracks you in the background.</p>
+<p>To turn the position into a readable place name, the coordinates are sent to Apple&#x27;s geocoding service. Apple&#x27;s handling of that request is covered by Apple&#x27;s own privacy policy. The resulting place name and coordinates are stored with the record, in the same places as the rest of your data.</p>
+<h2>Camera and photos</h2>
+<p>Photos you capture or choose are stored in Cost&#x27;s container so the receipt stays with the record. They are not uploaded anywhere.</p>
+<h2>Siri, Shortcuts and Spotlight</h2>
+<p>If you use the Siri shortcuts, your records are indexed on your device so Spotlight and Siri can find them. What Siri itself does with a spoken request is covered by Apple&#x27;s privacy policy. Dictation in the app&#x27;s text fields is the system keyboard&#x27;s own — Cost has no microphone access and requests none.</p>
+<h2>Children</h2>
+<p>Cost is not directed at children and collects no data from anyone.</p>
+<h2>Your rights</h2>
+<p>Because the developer holds no data about you, there is nothing to request, correct or delete from us. Your records are yours: editable and deletable in the app, and removable from iCloud through your device settings.</p>
+<h2>Changes to this policy</h2>
+<p>Any change will be posted at this address with a new date above.</p>
+<h2>Contact</h2>
+<p>hashspace.apps@gmail.com</p>
+</body>
+</html>
