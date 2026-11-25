@@ -13,6 +13,14 @@ serve it in one step; `--jinja` is needed for tool calls:
 llama-server -hf kurexi/cost-0.8b-q8 --alias cost --jinja --port 8090
 ```
 
+For the smaller 4-bit file (0.53 GB), use
+[kurexi/cost-0.8b-q4_k_m](https://huggingface.co/kurexi/cost-0.8b-q4_k_m)
+instead:
+
+```bash
+llama-server -hf kurexi/cost-0.8b-q4_k_m --alias cost --jinja --port 8090
+```
+
 Start a ledger with your categories and tags:
 
 ```bash

@@ -5,6 +5,15 @@ receipt, an order email, a bank notification or a quick note, and the agent
 turns it into a spending record: merchant, amount, currency, date, payment
 method, category and tags, with how confident it is.
 
+**Models on Hugging Face** (Qwen3.5-0.8B trained for this agent, as GGUF):
+
+- [kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8):
+  `Q8_0`, 0.81 GB, the one the app ships.
+- [kurexi/cost-0.8b-q4_k_m](https://huggingface.co/kurexi/cost-0.8b-q4_k_m):
+  `Q4_K_M`, 0.53 GB, smaller, a little weaker on names it has never seen.
+
+How to run them: [USAGE.md](USAGE.md).
+
 ```mermaid
 flowchart LR
     content["Receipt, email,<br/>notification or note"] --> model
@@ -31,7 +40,9 @@ reinforcement learning on the agent's own reward, and quantized to a GGUF
 under 1 GB. The app ships it at 8 bits (`Q8_0`, 0.81 GB); the 4-bit file
 (`Q4_K_M`, 0.53 GB) is shown beside it. The shipped model is published on
 Hugging Face as [kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8)
-(`qwen3.5-0.8b-grpo-r2-q8_0.gguf`, the "0.8B trained, shipped" row below).
+(`qwen3.5-0.8b-grpo-r2-q8_0.gguf`, the "0.8B trained, shipped" row below),
+and the 4-bit one as [kurexi/cost-0.8b-q4_k_m](https://huggingface.co/kurexi/cost-0.8b-q4_k_m)
+(the "0.8B trained, 4-bit" row).
 
 All of them run the same agent on the same 280 cases (`dev`: receipts,
 emails, bank and wallet notifications, notes and non-spending messages in
@@ -65,6 +76,16 @@ xychart-beta
 | 0.8B trained, shipped | Qwen3.5-0.8B, Q8_0, 0.81 GB GGUF | 80% (76%–85%) | 79% | 11% | 1.6 (0.2) | 6% of cases |
 | 0.8B trained, 4-bit | Qwen3.5-0.8B, Q4_K_M, 0.53 GB GGUF | 81% (76%–85%) | 76% | 13% | 1.7 (0.2) | 5% of cases |
 <!-- board:end -->
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/fields-dark.svg">
+  <img alt="Share of dev cases with each field right, for the 27B teacher, the 0.8B as released and the shipped 0.8B" src="eval/charts/fields-light.svg">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/languages-dark.svg">
+  <img alt="Records right on dev by language, for the 27B teacher, the 0.8B as released and the shipped 0.8B" src="eval/charts/languages-light.svg">
+</picture>
 
 Every run, at every size, is in [eval/BENCHMARK.md](eval/BENCHMARK.md).
 
@@ -113,6 +134,24 @@ schema.
 The last two columns of the benchmark show the result: before training,
 the 0.8B wastes calls and often spends its whole budget; after it, it
 calls fewer tools than its teacher and rarely wastes one.
+
+Step by step, distillation is what makes the 0.8B get records right, and
+reinforcement learning is what makes it careful: it halves the wrong
+records it would file without asking, and cuts the wasted calls. Turning
+it into an 8-bit GGUF costs next to nothing.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/path-dark.svg">
+  <img alt="Records right on dev and dev-novel, and wrong records filed unreviewed, at each step from the 0.8B as released to the shipped file" src="eval/charts/path-light.svg">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/tools-dark.svg">
+  <img alt="Tool calls a case, useful and wasted, for the teacher and each step of the 0.8B" src="eval/charts/tools-light.svg">
+</picture>
+
+The charts are drawn from the graded runs by
+[eval/charts.py](eval/charts.py).
 
 ## How a session runs
 
