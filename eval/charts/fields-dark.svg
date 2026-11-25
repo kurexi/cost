@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="440" viewBox="0 0 760 440" font-family='system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif' role="img">
+<title>Field by field: the trained 0.8B closes most of the gap</title>
+<desc>Spending or not: 27B teacher 99%, 0.8B as released 92%, 0.8B trained, shipped 99%; Amount: 27B teacher 99%, 0.8B as released 72%, 0.8B trained, shipped 96%; Currency: 27B teacher 98%, 0.8B as released 86%, 0.8B trained, shipped 97%; Merchant: 27B teacher 98%, 0.8B as released 60%, 0.8B trained, shipped 98%; Date: 27B teacher 99%, 0.8B as released 55%, 0.8B trained, shipped 97%; Payment method: 27B teacher 93%, 0.8B as released 65%, 0.8B trained, shipped 95%; Category: 27B teacher 90%, 0.8B as released 37%, 0.8B trained, shipped 86%; Tags: 27B teacher 96%, 0.8B as released 15%, 0.8B trained, shipped 93%; All of the record's core: 27B teacher 89%, 0.8B as released 23%, 0.8B trained, shipped 80%</desc>
+<rect width="760" height="440" rx="8" fill="#0d1117"/>
+<text x="24.0" y="34.0" font-size="16" font-weight="600" fill="#efefef" text-anchor="start">Field by field: the trained 0.8B closes most of the gap</text>
+<text x="24.0" y="56.0" font-size="13" font-weight="400" fill="#9c9c9c" text-anchor="start">Share of the dev cases with each field of the record right; the shipped file's value is labelled</text>
+<line x1="220.0" y1="100.0" x2="220.0" y2="390.0" stroke="#262c36" stroke-width="1"/>
+<text x="220.0" y="410.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">0%</text>
+<line x1="340.0" y1="100.0" x2="340.0" y2="390.0" stroke="#262c36" stroke-width="1"/>
+<text x="340.0" y="410.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">25%</text>
+<line x1="460.0" y1="100.0" x2="460.0" y2="390.0" stroke="#262c36" stroke-width="1"/>
+<text x="460.0" y="410.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">50%</text>
+<line x1="580.0" y1="100.0" x2="580.0" y2="390.0" stroke="#262c36" stroke-width="1"/>
+<text x="580.0" y="410.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">75%</text>
+<line x1="700.0" y1="100.0" x2="700.0" y2="390.0" stroke="#262c36" stroke-width="1"/>
+<text x="700.0" y="410.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">100%</text>
+<text x="206.0" y="122.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Spending or not</text>
+<line x1="663.2" y1="118.0" x2="696.5" y2="118.0" stroke="#474747" stroke-width="2"/>
+<circle cx="696.5" cy="118.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="663.2" cy="118.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="696.5" cy="118.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="696.5" y="108.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">99%</text>
+<text x="206.0" y="154.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Amount</text>
+<line x1="566.9" y1="150.0" x2="696.5" y2="150.0" stroke="#474747" stroke-width="2"/>
+<circle cx="696.5" cy="150.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="566.9" cy="150.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="679.0" cy="150.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="679.0" y="140.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">96%</text>
+<text x="206.0" y="186.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Currency</text>
+<line x1="635.2" y1="182.0" x2="691.2" y2="182.0" stroke="#474747" stroke-width="2"/>
+<circle cx="691.2" cy="182.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="635.2" cy="182.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="686.0" cy="182.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="686.0" y="172.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">97%</text>
+<text x="206.0" y="218.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Merchant</text>
+<line x1="509.1" y1="214.0" x2="691.2" y2="214.0" stroke="#474747" stroke-width="2"/>
+<circle cx="691.2" cy="214.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="509.1" cy="214.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="691.2" cy="214.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="691.2" y="204.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">98%</text>
+<text x="206.0" y="250.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Date</text>
+<line x1="482.8" y1="246.0" x2="694.7" y2="246.0" stroke="#474747" stroke-width="2"/>
+<circle cx="694.7" cy="246.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="482.8" cy="246.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="687.7" cy="246.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="687.7" y="236.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">97%</text>
+<text x="206.0" y="282.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Payment method</text>
+<line x1="531.8" y1="278.0" x2="675.5" y2="278.0" stroke="#474747" stroke-width="2"/>
+<circle cx="666.7" cy="278.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="531.8" cy="278.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="675.5" cy="278.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="675.5" y="268.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">95%</text>
+<text x="206.0" y="314.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Category</text>
+<line x1="398.7" y1="310.0" x2="652.7" y2="310.0" stroke="#474747" stroke-width="2"/>
+<circle cx="652.7" cy="310.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="398.7" cy="310.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="633.4" cy="310.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="633.4" y="300.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">86%</text>
+<text x="206.0" y="346.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Tags</text>
+<line x1="291.8" y1="342.0" x2="679.0" y2="342.0" stroke="#474747" stroke-width="2"/>
+<circle cx="679.0" cy="342.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="291.8" cy="342.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="666.7" cy="342.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="666.7" y="332.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">93%</text>
+<text x="206.0" y="378.0" font-size="12" font-weight="600" fill="#efefef" text-anchor="end">All of the record's core</text>
+<line x1="328.6" y1="374.0" x2="645.7" y2="374.0" stroke="#474747" stroke-width="2"/>
+<circle cx="645.7" cy="374.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<circle cx="328.6" cy="374.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<circle cx="605.4" cy="374.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="605.4" y="364.0" font-size="11" font-weight="400" fill="#efefef" text-anchor="middle">80%</text>
+<circle cx="29.0" cy="82.0" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<text x="40.0" y="86.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">27B teacher</text>
+<circle cx="138.9" cy="82.0" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<text x="149.9" y="86.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">0.8B as released</text>
+<circle cx="282.4" cy="82.0" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="293.4" y="86.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">0.8B trained, shipped</text>
+</svg>

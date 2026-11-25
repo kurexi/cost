@@ -77,6 +77,16 @@ xychart-beta
 | 0.8B trained, 4-bit | Qwen3.5-0.8B, Q4_K_M, 0.53 GB GGUF | 81% (76%–85%) | 76% | 13% | 1.7 (0.2) | 5% of cases |
 <!-- board:end -->
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/fields-dark.svg">
+  <img alt="Share of dev cases with each field right, for the 27B teacher, the 0.8B as released and the shipped 0.8B" src="eval/charts/fields-light.svg">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/languages-dark.svg">
+  <img alt="Records right on dev by language, for the 27B teacher, the 0.8B as released and the shipped 0.8B" src="eval/charts/languages-light.svg">
+</picture>
+
 Every run, at every size, is in [eval/BENCHMARK.md](eval/BENCHMARK.md).
 
 ## Six tools, a small budget
@@ -124,6 +134,24 @@ schema.
 The last two columns of the benchmark show the result: before training,
 the 0.8B wastes calls and often spends its whole budget; after it, it
 calls fewer tools than its teacher and rarely wastes one.
+
+Step by step, distillation is what makes the 0.8B get records right, and
+reinforcement learning is what makes it careful: it halves the wrong
+records it would file without asking, and cuts the wasted calls. Turning
+it into an 8-bit GGUF costs next to nothing.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/path-dark.svg">
+  <img alt="Records right on dev and dev-novel, and wrong records filed unreviewed, at each step from the 0.8B as released to the shipped file" src="eval/charts/path-light.svg">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="eval/charts/tools-dark.svg">
+  <img alt="Tool calls a case, useful and wasted, for the teacher and each step of the 0.8B" src="eval/charts/tools-light.svg">
+</picture>
+
+The charts are drawn from the graded runs by
+[eval/charts.py](eval/charts.py).
 
 ## How a session runs
 
