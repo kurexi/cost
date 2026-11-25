@@ -5,6 +5,10 @@ receipt, an order email, a bank notification or a quick note, and the agent
 turns it into a spending record: merchant, amount, currency, date, payment
 method, category and tags, with how confident it is.
 
+**Model:** [kurexi/cost-0.8b-q8 on Hugging Face](https://huggingface.co/kurexi/cost-0.8b-q8)
+(Qwen3.5-0.8B trained for this agent, `Q8_0` GGUF, 0.81 GB). How to run
+it: [USAGE.md](USAGE.md).
+
 ```mermaid
 flowchart LR
     content["Receipt, email,<br/>notification or note"] --> model
