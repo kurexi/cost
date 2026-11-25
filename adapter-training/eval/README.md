@@ -112,35 +112,6 @@ The app's own audits (`totalIsPlausible`, merchant grounding) are kept out of
 the reward deliberately. They are necessary but not sufficient, and a policy
 rewarded on them learns to copy any plausible number.
 
-## On a Mac (Apple Silicon)
-
-Three scripts in `mac/`, run from `adapter-training/eval`:
-
-```sh
-git clone https://github.com/kurexi/cost
-cd cost/adapter-training/eval
-./mac/setup.sh                 # venv, PyTorch, Qwen3.5-0.8B, training split, unit tests
-./mac/smoke.sh                 # a few minutes: every stage once, on 7 receipts
-caffeinate -i ./mac/train.sh   # train → evaluate → repeat until record_core ≥ 0.95
-```
-
-- `setup.sh --with-bonsai` also downloads Qwen3.5-2B and Ternary-Bonsai-2-2B and
-  unpacks Bonsai with `bonsai_unpack.py`; then `MODEL=models/bonsai-2b ./mac/smoke.sh`
-  and `MODEL=models/bonsai-2b ./mac/train.sh` work the same way.
-- `train.sh` reads `TARGET` (default 0.95), `MODEL`, `OUT` and `BATCH` from the
-  environment. It writes per-round scores to `work/<model>/rounds.jsonl` and
-  full grades to `runs/iter_r*/grade.json`. Rerunning it after an interruption
-  skips finished rounds and resumes an interrupted SFT run from its last
-  checkpoint.
-- The scripts run on the Mac GPU (`mps`) and train in float32 there, because
-  bf16 autocast support on `mps` varies by PyTorch and macOS version.
-  `PYTORCH_ENABLE_MPS_FALLBACK=1` runs any op the GPU backend lacks on the CPU
-  instead of failing. Pass `--dtype bfloat16` to `train_sft.py` (in `agent/eval/`) to try
-  half-precision training.
-- To run the ternary GGUF itself (not the unpacked copy), build PrismML's
-  llama.cpp fork with Metal, start `llama-server`, and use
-  `run.py --backend openai --base-url http://localhost:8080/v1 --model bonsai`.
-
 ## Keeping it in sync
 
 `env.py` is a reference port of Swift that is the source of truth. It reads
