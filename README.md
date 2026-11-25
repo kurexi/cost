@@ -5,6 +5,9 @@ receipt, an order email, a bank notification or a quick note, and the agent
 turns it into a spending record: merchant, amount, currency, date, payment
 method, category and tags, with how confident it is.
 
+**iOS app:** [Cost 2 on the App Store](https://apps.apple.com/us/app/cost-2/id6743996037)
+(iPhone and iPad, iOS 26 or later).
+
 **Models on Hugging Face** (Qwen3.5-0.8B trained for this agent, as GGUF):
 
 - [kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8):
