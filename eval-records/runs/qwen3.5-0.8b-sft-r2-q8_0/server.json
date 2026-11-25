@@ -1,0 +1,23 @@
+{
+ "source": "models/qwen3.5-0.8b-sft-r2",
+ "llama_cpp_tag": "b12400",
+ "llama_cpp_commit": "3e41ae69dba547d27d37a9bdad8b087a85c792c1",
+ "llama_cpp_binaries": "release",
+ "convert": "convert_hf_to_gguf.py --outtype bf16 --no-mtp",
+ "quantization": "Q8_0",
+ "gguf_bytes": 811841664,
+ "gguf_gib": 0.756,
+ "gguf_sha256": "ce7c7eb192f46af5601651e9a530893f1c215cc45aed97912054e8edff6390c5",
+ "server": "llama-server -ngl all -np 16 -c 262144 --jinja -cram 2048 -ctxcp 4",
+ "gpu": "NVIDIA L4",
+ "merge": {
+  "base": "models/qwen35-08b",
+  "adapter": "sft/qwen3.5-0.8b-sft-r2",
+  "merged": 186,
+  "modules": 186,
+  "scale": 2.0,
+  "largest_update": 0.007205240428447723,
+  "rank": 16,
+  "alpha": 32
+ }
+}

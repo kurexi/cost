@@ -1,0 +1,23 @@
+{
+ "source": "models/qwen3.5-0.8b-grpo-r2",
+ "llama_cpp_tag": "b12400",
+ "llama_cpp_commit": "3e41ae69dba547d27d37a9bdad8b087a85c792c1",
+ "llama_cpp_binaries": "release",
+ "convert": "convert_hf_to_gguf.py --outtype bf16 --no-mtp",
+ "quantization": "Q4_K_M",
+ "gguf_bytes": 534702208,
+ "gguf_gib": 0.498,
+ "gguf_sha256": "ed3dbc0474927a68e5bde9adece4b15c925c5081134d370bd9f4933a0428be26",
+ "server": "llama-server -ngl all -np 16 -c 262144 --jinja -cram 2048 -ctxcp 4",
+ "gpu": "Tesla T4",
+ "merge": {
+  "base": "models/qwen35-08b",
+  "adapter": "grpo/qwen3.5-0.8b-grpo-r2",
+  "merged": 186,
+  "modules": 186,
+  "scale": 2.0,
+  "largest_update": 0.008312089368700981,
+  "rank": 16,
+  "alpha": 32
+ }
+}

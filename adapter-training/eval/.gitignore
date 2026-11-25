@@ -1,0 +1,8 @@
+__pycache__/
+data/train.jsonl
+data/train_profiles.jsonl
+adapters/
+.venv/
+models/
+work/
+runs/smoke-*/

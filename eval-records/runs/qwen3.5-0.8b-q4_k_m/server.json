@@ -1,0 +1,13 @@
+{
+ "source": "Qwen/Qwen3.5-0.8B",
+ "llama_cpp_tag": "b12400",
+ "llama_cpp_commit": "3e41ae69dba547d27d37a9bdad8b087a85c792c1",
+ "llama_cpp_binaries": "release",
+ "convert": "convert_hf_to_gguf.py --outtype bf16 --no-mtp",
+ "quantization": "Q4_K_M",
+ "gguf_bytes": 534702208,
+ "gguf_gib": 0.498,
+ "gguf_sha256": "aa639529934ea8c4e2bd5d9bd6df2783528bb93257c87ed17651488e5849a303",
+ "server": "llama-server -ngl all -np 16 -c 262144 --jinja -cram 2048 -ctxcp 4",
+ "gpu": "Tesla T4"
+}

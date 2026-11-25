@@ -1,0 +1,57 @@
+{
+ "name": "dev",
+ "version": 1,
+ "seed": 11,
+ "perLocale": 40,
+ "usersPerLocale": 2,
+ "contentCharacterLimit": 4000,
+ "cases": 280,
+ "users": 14,
+ "fingerprint": "ba5103a047a0ddd7",
+ "contentLength": {
+  "median": 105,
+  "p90": 914,
+  "max": 4544
+ },
+ "styles": {
+  "till": 127,
+  "casual": 29,
+  "non_spending": 21,
+  "wallet": 42,
+  "notification": 48,
+  "email": 13
+ },
+ "traits": {
+  "long_content": 71,
+  "needs_proposal": 49,
+  "date_without_year": 48,
+  "memory_helps": 42,
+  "card_heading": 42,
+  "column_split": 40,
+  "many_items": 38,
+  "issuer_on_receipt": 37,
+  "standing_tag": 35,
+  "travel": 34,
+  "cash_change": 30,
+  "relative_date": 25,
+  "subtotal_line": 23,
+  "ocr_noise": 21,
+  "non_spending": 21,
+  "was_price": 21,
+  "new_trip": 20,
+  "mixed_merchant": 17,
+  "tax_added": 15,
+  "existing_trip_tag": 14,
+  "no_printed_total": 12,
+  "memory_misleads": 10,
+  "secondary_kind": 8,
+  "over_limit": 6,
+  "shipping_added": 6,
+  "category_ambiguous": 4
+ },
+ "memory": {
+  "helpful": 6,
+  "empty": 3,
+  "misleading": 5
+ }
+}

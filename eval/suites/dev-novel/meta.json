@@ -1,0 +1,61 @@
+{
+ "name": "dev-novel",
+ "version": 1,
+ "seed": 31,
+ "perLocale": 40,
+ "usersPerLocale": 2,
+ "novelShare": 1.0,
+ "novelSplit": "eval",
+ "contentCharacterLimit": 4000,
+ "cases": 280,
+ "users": 14,
+ "fingerprint": "2b88fe090a58ac9a",
+ "contentLength": {
+  "median": 98,
+  "p90": 944,
+  "max": 4445
+ },
+ "styles": {
+  "notification": 41,
+  "casual": 38,
+  "wallet": 38,
+  "till": 110,
+  "non_spending": 31,
+  "email": 22
+ },
+ "traits": {
+  "invented_merchant": 249,
+  "long_content": 83,
+  "many_items": 42,
+  "date_without_year": 41,
+  "card_heading": 38,
+  "travel": 38,
+  "standing_tag": 37,
+  "cash_change": 34,
+  "needs_proposal": 32,
+  "non_spending": 31,
+  "issuer_on_receipt": 31,
+  "subtotal_line": 28,
+  "memory_helps": 28,
+  "column_split": 24,
+  "existing_trip_tag": 22,
+  "ocr_noise": 20,
+  "was_price": 20,
+  "relative_date": 19,
+  "new_trip": 16,
+  "mixed_merchant": 16,
+  "shipping_added": 16,
+  "tax_added": 16,
+  "secondary_kind": 13,
+  "no_printed_total": 7,
+  "over_limit": 5,
+  "category_ambiguous": 5,
+  "memory_misleads": 3,
+  "tip": 1
+ },
+ "memory": {
+  "helpful": 5,
+  "empty": 7,
+  "misleading": 2
+ }
+}

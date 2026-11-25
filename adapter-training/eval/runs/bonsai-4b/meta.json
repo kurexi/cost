@@ -1,0 +1,14 @@
+{
+ "model": "bonsai",
+ "adapter": null,
+ "backend": "openai",
+ "samples": 70,
+ "seconds": 2643.4,
+ "seconds_per_sample": 37.8,
+ "tools": true,
+ "ledger_tool": true,
+ "max_rounds": 4,
+ "tool_tokens": 160,
+ "answer_tokens": 600,
+ "failed_requests": 0
+}

@@ -1,0 +1,10 @@
+{
+ "base": "models/qwen35-08b",
+ "adapter": "sft/qwen3.5-0.8b-sft-r1",
+ "merged": 186,
+ "modules": 186,
+ "scale": 2.0,
+ "largest_update": 0.00805723201483488,
+ "rank": 16,
+ "alpha": 32
+}
