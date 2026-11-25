@@ -13,6 +13,7 @@ run.py          runs the agent on a suite against any OpenAI-compatible server; 
 grade.py        field-level grading of the settled drafts, breakdowns, safety, the RL reward
 compare.py      runs side by side on shared cases: deltas with paired-bootstrap intervals, flips
 board.py        the leaderboard; --write updates RESULTS.md, --publish BENCHMARK.md and the evidence in ../README.md
+charts.py       the README's charts (charts/*.svg, light and dark) from the graded runs; run it after board.py --publish
 BENCHMARK.md    how the small model does: every graded dev and dev-novel run, without how it was served
 backends.py     oracle (answers the gold, must grade perfect) and silent (the floor)
 probe_formats.py asks a server which answer schemas it accepts, in seconds, before a run

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="400" viewBox="0 0 760 400" font-family='system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif' role="img">
+<title>Distillation makes it right; RL makes it careful</title>
+<desc>As released (fp16): dev 20%, dev-novel not run, wrong records filed unreviewed 58%; Distilled (SFT r3, bf16): dev 81%, dev-novel 76%, wrong records filed unreviewed 23%; + RL (GRPO r2, bf16): dev 81%, dev-novel 77%, wrong records filed unreviewed 12%; Shipped (Q8_0 GGUF): dev 80%, dev-novel 79%, wrong records filed unreviewed 11%</desc>
+<rect width="760" height="400" rx="8" fill="#0d1117"/>
+<text x="24.0" y="34.0" font-size="16" font-weight="600" fill="#efefef" text-anchor="start">Distillation makes it right; RL makes it careful</text>
+<text x="24.0" y="56.0" font-size="13" font-weight="400" fill="#9c9c9c" text-anchor="start">The shipped model at each step, on the 280 dev cases and the dev-novel ones (names never seen)</text>
+<line x1="64.0" y1="330.0" x2="600.0" y2="330.0" stroke="#474747" stroke-width="1"/>
+<text x="54.0" y="334.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="end">0%</text>
+<line x1="64.0" y1="273.5" x2="600.0" y2="273.5" stroke="#262c36" stroke-width="1"/>
+<text x="54.0" y="277.5" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="end">25%</text>
+<line x1="64.0" y1="217.0" x2="600.0" y2="217.0" stroke="#262c36" stroke-width="1"/>
+<text x="54.0" y="221.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="end">50%</text>
+<line x1="64.0" y1="160.5" x2="600.0" y2="160.5" stroke="#262c36" stroke-width="1"/>
+<text x="54.0" y="164.5" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="end">75%</text>
+<line x1="64.0" y1="104.0" x2="600.0" y2="104.0" stroke="#262c36" stroke-width="1"/>
+<text x="54.0" y="108.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="end">100%</text>
+<line x1="64.0" y1="129.6" x2="600.0" y2="129.6" stroke="#9c9c9c" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="610.0" y="133.6" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">27B teacher, dev 89%</text>
+<text x="104.0" y="352.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">As released</text>
+<text x="104.0" y="368.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">fp16</text>
+<text x="256.0" y="352.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">Distilled</text>
+<text x="256.0" y="368.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">SFT r3, bf16</text>
+<text x="408.0" y="352.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">+ RL</text>
+<text x="408.0" y="368.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">GRPO r2, bf16</text>
+<text x="560.0" y="352.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">Shipped</text>
+<text x="560.0" y="368.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">Q8_0 GGUF</text>
+<polyline points="104.0,285.5 256.0,147.7 408.0,147.7 560.0,148.5" fill="none" stroke="#338ced" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="104.0" cy="285.5" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="104.0" y="273.5" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">20%</text>
+<circle cx="256.0" cy="147.7" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="256.0" y="135.7" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">81%</text>
+<circle cx="408.0" cy="147.7" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="408.0" y="135.7" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">81%</text>
+<circle cx="560.0" cy="148.5" r="5" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="560.0" y="136.5" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">80%</text>
+<polyline points="256.0,158.2 408.0,155.8 560.0,150.8" fill="none" stroke="#00a888" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="256.0" cy="158.2" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<text x="256.0" y="178.2" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">76%</text>
+<circle cx="408.0" cy="155.8" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<text x="408.0" y="175.8" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">77%</text>
+<circle cx="560.0" cy="150.8" r="5" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<text x="560.0" y="170.8" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">79%</text>
+<polyline points="104.0,199.7 256.0,278.9 408.0,303.6 560.0,304.4" fill="none" stroke="#e76624" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="104.0" cy="199.7" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<text x="104.0" y="187.7" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">58%</text>
+<circle cx="256.0" cy="278.9" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<text x="256.0" y="266.9" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">23%</text>
+<circle cx="408.0" cy="303.6" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<text x="408.0" y="291.6" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">12%</text>
+<circle cx="560.0" cy="304.4" r="5" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<text x="560.0" y="292.4" font-size="12" font-weight="400" fill="#efefef" text-anchor="middle">11%</text>
+<line x1="24.0" y1="80.0" x2="42.0" y2="80.0" stroke="#338ced" stroke-width="2"/>
+<circle cx="33.0" cy="80.0" r="4" fill="#338ced" stroke="#0d1117" stroke-width="2"/>
+<text x="48.0" y="84.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">Records right on dev</text>
+<line x1="202.4" y1="80.0" x2="220.4" y2="80.0" stroke="#00a888" stroke-width="2"/>
+<circle cx="211.4" cy="80.0" r="4" fill="#00a888" stroke="#0d1117" stroke-width="2"/>
+<text x="226.4" y="84.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">Records right on dev-novel</text>
+<line x1="421.1" y1="80.0" x2="439.1" y2="80.0" stroke="#e76624" stroke-width="2"/>
+<circle cx="430.1" cy="80.0" r="4" fill="#e76624" stroke="#0d1117" stroke-width="2"/>
+<text x="445.1" y="84.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">Wrong records it would file unreviewed</text>
+</svg>

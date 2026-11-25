@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="358" viewBox="0 0 760 358" font-family='system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif' role="img">
+<title>Tool calls a case: fewer, and almost none wasted</title>
+<desc>27B teacher: 2.2 calls, 0.1 wasted; As released (fp16): 5.2 calls, 2.4 wasted; Distilled (SFT r3, bf16): 2.6 calls, 0.7 wasted; + RL (GRPO r2, bf16): 1.4 calls, 0.1 wasted; Shipped (Q8_0 GGUF): 1.6 calls, 0.2 wasted; 4-bit (Q4_K_M GGUF): 1.7 calls, 0.2 wasted</desc>
+<rect width="760" height="358" rx="8" fill="#0d1117"/>
+<text x="24.0" y="34.0" font-size="16" font-weight="600" fill="#efefef" text-anchor="start">Tool calls a case: fewer, and almost none wasted</text>
+<text x="24.0" y="56.0" font-size="13" font-weight="400" fill="#9c9c9c" text-anchor="start">Mean over the 280 dev cases; 12 allowed; a wasted call was refused, repeated, unknown or invalid</text>
+<line x1="230.0" y1="98.0" x2="230.0" y2="308.0" stroke="#474747" stroke-width="1"/>
+<text x="230.0" y="326.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">0</text>
+<line x1="308.0" y1="98.0" x2="308.0" y2="308.0" stroke="#262c36" stroke-width="1"/>
+<text x="308.0" y="326.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">1</text>
+<line x1="386.1" y1="98.0" x2="386.1" y2="308.0" stroke="#262c36" stroke-width="1"/>
+<text x="386.1" y="326.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">2</text>
+<line x1="464.1" y1="98.0" x2="464.1" y2="308.0" stroke="#262c36" stroke-width="1"/>
+<text x="464.1" y="326.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">3</text>
+<line x1="542.1" y1="98.0" x2="542.1" y2="308.0" stroke="#262c36" stroke-width="1"/>
+<text x="542.1" y="326.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">4</text>
+<line x1="620.2" y1="98.0" x2="620.2" y2="308.0" stroke="#262c36" stroke-width="1"/>
+<text x="620.2" y="326.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="middle">5</text>
+<text x="218.0" y="125.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">27B teacher</text>
+<path d="M230.0,113.0 H396.3 Q396.3,113.0 396.3,113.0 V129.0 Q396.3,129.0 396.3,129.0 H230.0 Z" fill="#338ced"/>
+<path d="M398.3,113.0 H399.6 Q400.9,113.0 400.9,114.3 V127.7 Q400.9,129.0 399.6,129.0 H398.3 Z" fill="#e76624"/>
+<text x="408.9" y="125.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">2.2 (0.1 wasted)</text>
+<text x="218.0" y="159.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">As released (fp16)</text>
+<path d="M230.0,147.0 H453.8 Q453.8,147.0 453.8,147.0 V163.0 Q453.8,163.0 453.8,163.0 H230.0 Z" fill="#338ced"/>
+<path d="M455.8,147.0 H635.5 Q639.5,147.0 639.5,151.0 V159.0 Q639.5,163.0 635.5,163.0 H455.8 Z" fill="#e76624"/>
+<text x="647.5" y="159.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">5.2 (2.4 wasted)</text>
+<text x="218.0" y="193.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Distilled (SFT r3, bf16)</text>
+<path d="M230.0,181.0 H382.6 Q382.6,181.0 382.6,181.0 V197.0 Q382.6,197.0 382.6,197.0 H230.0 Z" fill="#338ced"/>
+<path d="M384.6,181.0 H429.9 Q433.9,181.0 433.9,185.0 V193.0 Q433.9,197.0 429.9,197.0 H384.6 Z" fill="#e76624"/>
+<text x="441.9" y="193.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">2.6 (0.7 wasted)</text>
+<text x="218.0" y="227.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">+ RL (GRPO r2, bf16)</text>
+<path d="M230.0,215.0 H330.8 Q330.8,215.0 330.8,215.0 V231.0 Q330.8,231.0 330.8,231.0 H230.0 Z" fill="#338ced"/>
+<path d="M332.8,215.0 H337.4 Q341.4,215.0 341.4,219.0 V227.0 Q341.4,231.0 337.4,231.0 H332.8 Z" fill="#e76624"/>
+<text x="349.4" y="227.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">1.4 (0.1 wasted)</text>
+<text x="218.0" y="261.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">Shipped (Q8_0 GGUF)</text>
+<path d="M230.0,249.0 H344.5 Q344.5,249.0 344.5,249.0 V265.0 Q344.5,265.0 344.5,265.0 H230.0 Z" fill="#338ced"/>
+<path d="M346.5,249.0 H354.4 Q358.4,249.0 358.4,253.0 V261.0 Q358.4,265.0 354.4,265.0 H346.5 Z" fill="#e76624"/>
+<text x="366.4" y="261.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">1.6 (0.2 wasted)</text>
+<text x="218.0" y="295.0" font-size="12" font-weight="400" fill="#efefef" text-anchor="end">4-bit (Q4_K_M GGUF)</text>
+<path d="M230.0,283.0 H344.2 Q344.2,283.0 344.2,283.0 V299.0 Q344.2,299.0 344.2,299.0 H230.0 Z" fill="#338ced"/>
+<path d="M346.2,283.0 H355.3 Q359.3,283.0 359.3,287.0 V295.0 Q359.3,299.0 355.3,299.0 H346.2 Z" fill="#e76624"/>
+<text x="367.3" y="295.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">1.7 (0.2 wasted)</text>
+<rect x="24" y="74" width="12" height="12" rx="3" fill="#338ced"/>
+<text x="42.0" y="84.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">Useful calls</text>
+<rect x="142.64000000000001" y="74" width="12" height="12" rx="3" fill="#e76624"/>
+<text x="160.6" y="84.0" font-size="12" font-weight="400" fill="#9c9c9c" text-anchor="start">Wasted calls</text>
+</svg>
