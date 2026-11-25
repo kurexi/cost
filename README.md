@@ -29,7 +29,9 @@ A 27B model reads these well, but it can't ship with an app. So the 27B is
 the teacher: Qwen3.5-0.8B is trained on its sessions, then with
 reinforcement learning on the agent's own reward, and quantized to a GGUF
 under 1 GB. The app ships it at 8 bits (`Q8_0`, 0.81 GB); the 4-bit file
-(`Q4_K_M`, 0.53 GB) is shown beside it.
+(`Q4_K_M`, 0.53 GB) is shown beside it. The shipped model is published on
+Hugging Face as [kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8)
+(`qwen3.5-0.8b-grpo-r2-q8_0.gguf`, the "0.8B trained, shipped" row below).
 
 All of them run the same agent on the same 280 cases (`dev`: receipts,
 emails, bank and wallet notifications, notes and non-spending messages in

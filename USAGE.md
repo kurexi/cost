@@ -4,6 +4,15 @@ The ledger is a folder of CSV files; the model is any OpenAI-compatible
 server (llama-server, Ollama, LM Studio, vLLM). Standard library only, no
 install step. Run everything from the repository root.
 
+The trained model is on Hugging Face as
+[kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8), a single
+0.81 GB GGUF (`qwen3.5-0.8b-grpo-r2-q8_0.gguf`). llama-server can fetch and
+serve it in one step; `--jinja` is needed for tool calls:
+
+```bash
+llama-server -hf kurexi/cost-0.8b-q8 --alias cost --jinja --port 8090
+```
+
 Start a ledger with your categories and tags:
 
 ```bash
@@ -19,7 +28,7 @@ python3 -m spending_agent add ~/ledger --date 2026-11-01 --merchant Tesco --amou
 Let the agent read a receipt, here against a server on port 8090:
 
 ```bash
-python3 -m spending_agent process ~/ledger receipt.txt --base-url http://127.0.0.1:8090/v1 --model bonsai --reasoning-effort none
+python3 -m spending_agent process ~/ledger receipt.txt --base-url http://127.0.0.1:8090/v1 --model cost --reasoning-effort none
 ```
 
 See what is waiting for review:
