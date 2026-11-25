@@ -1,0 +1,13 @@
+{
+ "model": "qwen35-08b",
+ "adapter": null,
+ "backend": "hf",
+ "samples": 70,
+ "seconds": 4839.5,
+ "seconds_per_sample": 69.1,
+ "tools": true,
+ "ledger_tool": true,
+ "max_rounds": 4,
+ "tool_tokens": 160,
+ "answer_tokens": 600
+}

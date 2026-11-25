@@ -1,0 +1,57 @@
+{
+ "name": "holdout",
+ "version": 1,
+ "seed": 23,
+ "perLocale": 20,
+ "usersPerLocale": 2,
+ "contentCharacterLimit": 4000,
+ "cases": 140,
+ "users": 14,
+ "fingerprint": "87768222956ef772",
+ "contentLength": {
+  "median": 99,
+  "p90": 848,
+  "max": 4498
+ },
+ "styles": {
+  "till": 62,
+  "wallet": 24,
+  "email": 8,
+  "non_spending": 12,
+  "notification": 25,
+  "casual": 9
+ },
+ "traits": {
+  "long_content": 40,
+  "date_without_year": 25,
+  "card_heading": 24,
+  "memory_helps": 24,
+  "needs_proposal": 23,
+  "standing_tag": 21,
+  "cash_change": 20,
+  "issuer_on_receipt": 19,
+  "many_items": 18,
+  "column_split": 18,
+  "ocr_noise": 17,
+  "subtotal_line": 16,
+  "travel": 14,
+  "mixed_merchant": 14,
+  "non_spending": 12,
+  "tax_added": 10,
+  "was_price": 10,
+  "existing_trip_tag": 9,
+  "secondary_kind": 9,
+  "no_printed_total": 5,
+  "new_trip": 5,
+  "relative_date": 5,
+  "shipping_added": 4,
+  "category_ambiguous": 3,
+  "memory_misleads": 2,
+  "over_limit": 2
+ },
+ "memory": {
+  "helpful": 8,
+  "empty": 4,
+  "misleading": 2
+ }
+}

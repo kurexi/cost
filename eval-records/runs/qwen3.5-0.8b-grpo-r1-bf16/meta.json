@@ -1,0 +1,19 @@
+{
+ "name": "qwen3.5-0.8b-grpo-r1-bf16",
+ "suite": "dev",
+ "suite_fingerprint": "ba5103a047a0ddd7",
+ "contract": "7fcba05bea99d624",
+ "agent_code": "2c8532c12105d34c",
+ "backend": "openai",
+ "model": "qwen",
+ "base_url": "http://127.0.0.1:8090/v1",
+ "reasoning_effort": "none",
+ "temperature": 0.0,
+ "max_tool_rounds": 10,
+ "tool_tokens": 800,
+ "answer_tokens": 1500,
+ "cases_planned": 280,
+ "seconds": 124.7,
+ "workers": 16,
+ "cases_done": 280
+}
