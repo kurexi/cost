@@ -5,9 +5,14 @@ receipt, an order email, a bank notification or a quick note, and the agent
 turns it into a spending record: merchant, amount, currency, date, payment
 method, category and tags, with how confident it is.
 
-**Model:** [kurexi/cost-0.8b-q8 on Hugging Face](https://huggingface.co/kurexi/cost-0.8b-q8)
-(Qwen3.5-0.8B trained for this agent, `Q8_0` GGUF, 0.81 GB). How to run
-it: [USAGE.md](USAGE.md).
+**Models on Hugging Face** (Qwen3.5-0.8B trained for this agent, as GGUF):
+
+- [kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8):
+  `Q8_0`, 0.81 GB, the one the app ships.
+- [kurexi/cost-0.8b-q4_k_m](https://huggingface.co/kurexi/cost-0.8b-q4_k_m):
+  `Q4_K_M`, 0.53 GB, smaller, a little weaker on names it has never seen.
+
+How to run them: [USAGE.md](USAGE.md).
 
 ```mermaid
 flowchart LR
@@ -35,7 +40,9 @@ reinforcement learning on the agent's own reward, and quantized to a GGUF
 under 1 GB. The app ships it at 8 bits (`Q8_0`, 0.81 GB); the 4-bit file
 (`Q4_K_M`, 0.53 GB) is shown beside it. The shipped model is published on
 Hugging Face as [kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8)
-(`qwen3.5-0.8b-grpo-r2-q8_0.gguf`, the "0.8B trained, shipped" row below).
+(`qwen3.5-0.8b-grpo-r2-q8_0.gguf`, the "0.8B trained, shipped" row below),
+and the 4-bit one as [kurexi/cost-0.8b-q4_k_m](https://huggingface.co/kurexi/cost-0.8b-q4_k_m)
+(the "0.8B trained, 4-bit" row).
 
 All of them run the same agent on the same 280 cases (`dev`: receipts,
 emails, bank and wallet notifications, notes and non-spending messages in
