@@ -1,12 +1,3 @@
-"""Command line for the Python spending agent.
-
-    python -m spending_agent init LEDGER --category Groceries --tag Work
-    python -m spending_agent add LEDGER --date 2026-11-01 --merchant Tesco --amount 12.40 --currency GBP
-    python -m spending_agent process LEDGER receipt.txt --base-url http://127.0.0.1:8090/v1 --model bonsai
-    python -m spending_agent memory LEDGER [--history]
-    python -m spending_agent review LEDGER
-"""
-
 import argparse
 import datetime
 import os

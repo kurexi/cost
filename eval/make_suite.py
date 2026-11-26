@@ -1,30 +1,4 @@
 #!/usr/bin/env python3
-"""Generate a frozen evaluation suite for the spending agent.
-
-    python3 make_suite.py --name dev     --per-locale 40 --seed 11
-    python3 make_suite.py --name holdout --per-locale 20 --seed 23
-
-Content and gold records come from the receipt generator in `receipts.py`
-(multilingual till receipts, order emails, bank notifications, wallet
-screens, casual notes and non-spending messages, with their traits). On top
-of that each simulated user gets what the agent is judged on:
-
-- a ledger in the agent's own CSV shape, with provenance on every record;
-- tags: a standing one on one merchant's records ("Work"), an event one per
-  trip the user has already started recording, and an unrelated decoy
-  ("Gifts") — with gold tags on the cases that belong under them, and cases
-  abroad with no trip tag yet, where proposing one is allowed;
-- a memory text: empty, helpful, or helpful with one wrong line, so whether
-  the agent trusts a bad memory over the records is measured;
-- realistic content length: card slips, VAT tables, policies and legal
-  footers around the receipt, and a few cases over the content budget that
-  must be rejected before any model call.
-
-Writes `suites/<name>/cases.jsonl`, `users.jsonl` and `meta.json`. The
-suite is frozen once committed: runs record its fingerprint, and runs on
-different fingerprints are never compared. Stdlib only.
-"""
-
 import argparse
 import hashlib
 import json
@@ -214,9 +188,6 @@ def lengthen_email(rng, loc, content):
 
 
 def long_receipt(rng, locale, case, gold, world=LOCALES):
-    """The same purchase re-rendered as a big shop: 10 to 40 item lines from
-    the merchant's pool (repeats allowed, as on real receipts), and the gold
-    record rebuilt from what the renderer printed."""
     loc = world[locale]
     merchant = merchant_entry(locale, gold["merchant"], world)
     if merchant is None:
@@ -283,7 +254,6 @@ def assign_source(rng):
 
 
 def make_user(rng, profile, cases, world=LOCALES):
-    """The generator's profile in the agent's ledger shape, with tags and a memory."""
     home, language = profile["home"], profile["language"]
     titles = CATEGORY_TITLES[language]
     records = []
@@ -457,7 +427,6 @@ def make_case(rng, case, user, limit, world=LOCALES, varied=None):
 
 
 def interleave(cases):
-    """Round-robin by home locale, so any prefix (`run.py --limit`) is balanced."""
     by_locale = {}
     for case in cases:
         by_locale.setdefault(case["homeLocale"], []).append(case)
@@ -482,11 +451,6 @@ def varied_stream(seed, case_id, share):
 
 def build(seed, per_locale, users_per_locale, limit=CONTENT_CHARACTER_LIMIT, novel_share=0.0, novel_split="train",
           variety=0.0):
-    """`novel_share` is the share of each user's merchants and item names
-    that are invented for them (`novel_names`); 0 draws the real list only, as
-    the frozen `dev` and `holdout` suites do. `novel_split` is the half of
-    the invented names it draws from: `train` for training data, `eval` for
-    a suite that must hold only names no training suite can contain."""
     rng = random.Random(seed)
     profiles, v1_cases, worlds = [], [], {}
     for home in v1.HOME_LOCALES:
@@ -510,7 +474,7 @@ def build(seed, per_locale, users_per_locale, limit=CONTENT_CHARACTER_LIMIT, nov
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True, help="suite name, e.g. dev or holdout")
     ap.add_argument("--per-locale", type=int, default=40)
     ap.add_argument("--users-per-locale", type=int, default=2)

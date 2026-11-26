@@ -22,9 +22,6 @@ CALL = ("I'll look the shop up.\n\n<tool_call>\n<function=queryMerchants>\n<para
 
 
 class CharTokenizer:
-    """One id per character, and `<|im_end|>` as one id, the way a real
-    tokenizer keeps a special token whole: enough for prompts to extend
-    each other token for token."""
 
     def __call__(self, text, add_special_tokens=False):
         ids = []
@@ -53,9 +50,6 @@ def answer_for(case, confidence=0.9, **changes):
 
 
 class ScriptedPolicy:
-    """Stands in for the model: a tool round asks for one merchant lookup,
-    the next ends the phase, the answer is the given JSON. It records the
-    size of every batch it is handed."""
 
     def __init__(self, tokenizer, answer):
         self.tokenizer, self.answer, self.batches, self.schemas = tokenizer, answer, [], []
@@ -338,8 +332,6 @@ class CutTests(unittest.TestCase):
 
 @unittest.skipUnless(all(importlib.util.find_spec(m) for m in ("torch", "xgrammar")), "needs torch and xgrammar")
 class GrammarMaskTests(unittest.TestCase):
-    """An answer row may only write what its schema allows; a tool row is
-    left alone; a row whose grammar has ended is the generator's to pad."""
 
     SCHEMA = {"type": "object", "properties": {"confidence": {"type": "number"}}, "required": ["confidence"],
               "additionalProperties": False}

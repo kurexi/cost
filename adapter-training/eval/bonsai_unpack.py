@@ -1,31 +1,4 @@
 #!/usr/bin/env python3
-"""Unpack Ternary-Bonsai-2-2B (GGUF, Q2_0) into a transformers checkpoint.
-
-Bonsai stores Qwen3.5-2B's projections as ternary {-1, 0, +1} x fp16 group
-scale (Q2_0: 64-element blocks), in a rotated basis: the runtime applies a
-normalized blockwise Walsh-Hadamard transform with explicit signs to each
-weight's *input* activations (`prism.hadamard.*` in the GGUF metadata). The
-transform is orthonormal, so every listed weight folds back exactly:
-
-    W_original_basis = W_stored @ T        (T = the input transform)
-
-The embedding is listed as an inverse weight; for a row-stored, tied
-embedding that is the same fold. The result is functionally Bonsai — the
-same ternary information, expressed in the base model's basis — and loads
-as an ordinary `Qwen3_5ForCausalLM`, so it can be evaluated with run.py and
-LoRA-trained with train_sft.py / train_grpo.py like any other checkpoint.
-
-Everything the GGUF doesn't quantize (norms, the linear-attention state
-path) is also taken from the GGUF, converted back from llama.cpp's
-conventions. The original Qwen3.5-2B checkpoint is used for the config,
-tokenizer and tensor layout, and as a *check*: each unpacked projection must
-correlate with the base model's (a wrong sign order or permutation shows up
-as ~0), and `--verify` prints the correlations.
-
-    python3 bonsai_unpack.py --gguf Ternary-Bonsai-2-2B-Q2_0.gguf \
-        --base /path/Qwen3.5-2B --out /path/bonsai-2b-unpacked --verify
-"""
-
 import argparse
 import json
 import os
@@ -94,8 +67,6 @@ def load_tensor(path, start, dims, ttype, offset):
 
 
 def fwht_blocks(x, block):
-    """Normalized Walsh-Hadamard transform (Sylvester order) over blocks of
-    the last axis."""
     shape = x.shape
     y = x.reshape(-1, shape[-1] // block, block).astype(np.float32).copy()
     h = 1
@@ -109,8 +80,6 @@ def fwht_blocks(x, block):
 
 
 def fold(w, signs, block, order):
-    """W @ T for T = H·diag(s) ("hs") or diag(s)·H ("sh"); H symmetric, so
-    W @ H is the row-wise transform of W."""
     signs = signs.astype(np.float32)
     out = np.empty(w.shape, dtype=np.float32)
     rows = w.reshape(-1, w.shape[-1])
@@ -155,7 +124,7 @@ def corr(a, b):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--gguf", required=True)
     ap.add_argument("--base", required=True, help="Qwen3.5-2B (config, tokenizer, layout, check)")
     ap.add_argument("--out", required=True)

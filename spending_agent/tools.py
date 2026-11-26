@@ -1,8 +1,3 @@
-"""The agent's tools, as pure functions over a ledger snapshot and the memory
-text. Every tool answers; none raises. An answer carries the message the
-model reads, a short summary for the transcript, and the bare evidence that
-compaction keeps when the exchange itself is dropped."""
-
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -154,7 +149,6 @@ def calculator(arguments):
 
 
 def purchase_description(note):
-    """A note with its leading category label ("Groceries: milk, bread") cut off."""
     text = (note or "").strip()
     if ":" not in text:
         return text
@@ -171,7 +165,6 @@ def common_spelling(names):
 
 
 def day(text):
-    """The date a record's `date` column holds, or None when it holds none."""
     if not DAY.match(text or ""):
         return None
     try:
@@ -431,7 +424,6 @@ def _too_long(result, memory):
 
 
 def memory_append(memory, arguments):
-    """Returns (new memory or None, answer)."""
     text = _arg(arguments, "text")
     if not text:
         return None, ToolAnswer("Give the text to append.", "invalid edit")
@@ -443,7 +435,6 @@ def memory_append(memory, arguments):
 
 
 def memory_replace(memory, arguments):
-    """Returns (new memory or None, answer). An empty `new` removes the passage."""
     old, new = _arg(arguments, "old"), _arg(arguments, "new")
     if not old:
         return None, ToolAnswer("Give old, the exact passage to replace, copied from your memory.", "invalid edit")

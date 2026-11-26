@@ -1,24 +1,4 @@
 #!/usr/bin/env python3
-"""Compare runs on the cases they share: is the student better than the baseline?
-
-    python3 compare.py bonsai-27b qwen-0.8b-sft-r3            # first = baseline
-    python3 compare.py base sft-r1 sft-r2 sft-r3 --metric record_all
-
-Runs must be on the same suite (same fingerprint) — otherwise the
-difference is the data, not the model — and only the cases every run
-finished are compared. A run on a different agent contract (instructions,
-schema, tools) is compared with a warning: the prompt changed as well as the
-model.
-
-Prints:
-1. the headline metrics per run, and for each later run the change from the
-   baseline with a 95% paired-bootstrap interval — an interval that excludes
-   zero is a real difference on this suite;
-2. one metric by language, style and trait, baseline vs last run;
-3. the cases the last run fixed and broke on that metric, with an exact sign
-   test on those flips.
-"""
-
 import argparse
 import json
 import math
@@ -61,7 +41,7 @@ def mean(rows, field):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+", help="run names or folders; the first is the baseline")
     ap.add_argument("--metric", default="record_core")
     ap.add_argument("--min-n", type=int, default=5, help="hide breakdown rows with fewer cases")

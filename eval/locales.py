@@ -1,18 +1,3 @@
-"""Per-locale content for the multilingual receipt set.
-
-Everything a renderer needs to write a believable receipt, notification,
-wallet screen, order email or note in one of six languages: merchants with their items and price ranges, the user's category
-titles as a user of that language would name them, receipt labels, amount and
-date formats, and generated payment-instrument names.
-
-Instrument names are generated, never drawn from a fixed pool alone: a
-share of every locale's names is invented from syllables, so a model can
-only learn where an instrument sits, not which brands are instruments.
-
-Prices are (low, high) in minor units of the locale's currency; JPY is
-zero-decimal, so its minor unit is one yen.
-"""
-
 import random
 
 CATEGORY_KEYS = [
@@ -70,7 +55,6 @@ def invented_latin(rng):
 
 
 def plain(minor, zero_decimal):
-    """The gold form: '12.34', or '1280' for a zero-decimal currency."""
     if zero_decimal:
         return str(minor)
     return f"{minor // 100}.{minor % 100:02d}"
@@ -86,11 +70,6 @@ def grouped(minor, zero_decimal, thousands=",", decimal="."):
 
 
 def M(name, cat, items, printed=None, mixed=None, online=False, aliases=None):
-    """One merchant. `items` is [(item, low, high)] in minor units.
-
-    `printed` is how a till prints the name (several spellings: the gold
-    merchant is `name`, any of `aliases` is also accepted). `mixed` is a second
-    (category, items) the user also files purchases here under."""
     return {
         "name": name, "cat": cat, "items": items,
         "printed": printed or [name], "mixed": mixed, "online": online,
@@ -551,8 +530,6 @@ LOCALES["de"] = {
 
 
 def instrument_name(rng, loc):
-    """A card, bank or wallet name for the locale: real, invented, or with a
-    kind suffix — so the name itself is never what identifies it."""
     roll = rng.random()
     if roll < 0.45 or "invented" not in loc:
         if roll >= 0.45:

@@ -1,8 +1,3 @@
-"""An OpenAI-compatible chat-completions client (llama-server, Ollama, LM
-Studio, vLLM), called the way the app's local path calls one: one request at
-a time, and the answer asked for as `json_schema`, falling back to
-`json_object` and then to no format when a server refuses one."""
-
 import contextlib
 import io
 import json
@@ -37,8 +32,6 @@ def without_thinking(text):
 
 
 def tool_calls_of(message):
-    """The calls a reply asks for, as [{"id", "name", "arguments"}]. Native
-    `tool_calls` first; else calls a template left as text in the content."""
     calls = []
     for index, call in enumerate(message.get("tool_calls") or []):
         function = call.get("function") or {}
@@ -75,8 +68,6 @@ SCHEMA_BOUNDS = ("pattern", "maxLength", "minLength", "maxItems", "minItems", "m
 
 
 def without_bounds(schema):
-    """The schema with every length, pattern and range bound removed: the same
-    fields in the same order, which is what the grammar most needs to fix."""
     if isinstance(schema, dict):
         return {k: without_bounds(v) for k, v in schema.items() if k not in SCHEMA_BOUNDS}
     if isinstance(schema, list):
@@ -93,8 +84,6 @@ def field_guide(schema):
 
 
 def with_field_guide(messages, schema):
-    """The messages with the field list appended to the last user turn, for a
-    format whose grammar doesn't name the fields."""
     messages = [dict(m) for m in messages]
     for message in reversed(messages):
         if message.get("role") == "user":
@@ -117,9 +106,6 @@ def answer_ladder(messages, schema):
 class ChatBackend:
     def __init__(self, base_url, model, api_key=None, timeout=900, temperature=0.0, reasoning_effort=None,
                  one_request_at_a_time=True):
-        """`one_request_at_a_time` is the app's rule (on unified memory a second
-        generation opens a second KV cache). An evaluation on a GPU server with
-        parallel slots turns it off to batch several sessions."""
         self.base_url, self.model, self.api_key = base_url.rstrip("/"), model, api_key
         self.timeout, self.temperature, self.reasoning_effort = timeout, temperature, reasoning_effort
         self.one_request_at_a_time = one_request_at_a_time
@@ -128,9 +114,6 @@ class ChatBackend:
         self.last_refusals = []
 
     def _post(self, body):
-        """A server that refuses the `reasoning_effort` field (some take only
-        `chat_template_kwargs`) is asked again without it, and never sent it
-        again."""
         try:
             return self._send(body)
         except urllib.error.HTTPError as error:
@@ -166,7 +149,6 @@ class ChatBackend:
         return body
 
     def complete(self, messages, tools=None, max_tokens=800):
-        """One tool round: the reply message, which may ask for tool calls."""
         body = self._body(messages, max_tokens)
         if tools:
             body.update(tools=tools, tool_choice="auto")
@@ -174,10 +156,6 @@ class ChatBackend:
         return reply["choices"][0]["message"], self._usage(reply)
 
     def answer(self, messages, schema, max_tokens=1500):
-        """The structured answer, down the response-format ladder: the bounded
-        schema; the same schema without its bounds (some grammar engines refuse
-        patterns or length caps); then `json_object` and no format, where the
-        grammar no longer names the fields, so the prompt spells them out."""
         self.last_refusals = []
         for label, response_format, prompt in answer_ladder(messages, schema):
             body = self._body(prompt, max_tokens)

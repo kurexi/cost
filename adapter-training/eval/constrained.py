@@ -1,20 +1,3 @@
-"""Schema-constrained decoding for the transformers backend.
-
-The app never lets a local model choose the shape of its answer: the final
-request carries `LocalModelAgent.extractionSchema` as a `json_schema`
-response format, which servers compile into a grammar. Without that, a small
-model invents its own keys ("amount": 1111, "spending": {...}) and a grading
-run would measure the missing grammar, not the model.
-
-`ExtractionGrammar` is the same constraint as a transformers
-`LogitsProcessor`, for this one flat schema: the object's keys, punctuation
-and order are forced (`{"reasoning": "`, `", "isSpending": `, ...), and the
-model only ever chooses the *values* — free text inside strings (a closing
-quote is allowed only where it can't run into the next key), `true`/`false`
-for the boolean, digits for the number. Greedy forcing of the literal parts
-picks the longest vocabulary token that is a prefix of what must come next.
-"""
-
 import json
 
 import torch
@@ -49,9 +32,6 @@ class ExtractionGrammar(LogitsProcessor):
         self.vocab_size = len(tokenizer)
 
     def _state(self, text):
-        """Walk `text` (the generated part) against the template. Returns
-        ("literal", remaining_literal) | ("string", None) | ("bool", buf) |
-        ("number", buf) | ("done", None)."""
         pos = 0
         for i, (_, kind) in enumerate(self.fields):
             self._index = i

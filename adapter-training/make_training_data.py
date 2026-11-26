@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-"""
-Generate synthetic training data for the receipt-extraction LoRA adapter.
-
-Produces JSONL where each line is one training sample: a list of
-{"role": ..., "content": ...} messages (system, user, assistant) in the
-format Apple's adapter training toolkit consumes. The user turn mirrors the
-exact prompt assembly in `cost 2/Intelligence/SpendingAgent.swift` and the
-assistant turn is the gold `ReceiptExtraction` JSON, so the adapter is
-trained on precisely the distribution it will see at inference.
-
-Everything here is invented — no real user data is used or needed.
-
-Usage:
-    python3 make_training_data.py --count 2000 --out data/train.jsonl --seed 1
-    python3 make_training_data.py --count 200  --out data/eval.jsonl  --seed 2
-"""
-
 import argparse
 import json
 import random
@@ -96,7 +79,6 @@ CARD_SCHEMES = ["VISA", "MASTERCARD", "AMEX", "MAESTRO"]
 
 
 def instrument_name(rng):
-    """One card, bank, wallet or app name — real, invented or generic."""
     roll = rng.random()
     if roll < 0.15:
         return rng.choice(GENERIC_INSTRUMENTS)
@@ -112,11 +94,6 @@ def instrument_name(rng):
 
 
 def till_payment_line(rng):
-    """The payment line at the foot of a till receipt, and what it names.
-
-    A masked number names no issuer, so the honest gold there is just "Card";
-    cash is cash; a scheme or an issuer beside the digits names itself.
-    """
     roll = rng.random()
     last4 = str(rng.randrange(1000, 10000))
     if roll < 0.2:
@@ -214,21 +191,18 @@ OCR_SUBS = [("O", "0"), ("0", "O"), ("l", "1"), ("I", "1"), ("S", "5"), ("B", "8
 
 
 def minor_units(rng, currency):
-    """A plausible total in minor units for the currency."""
     if currency in ZERO_DECIMAL:
         return rng.randrange(300, 12000, 10)
     return rng.randrange(199, 15000)
 
 
 def amount_string(minor, currency):
-    """The gold-answer form: plain decimal, dot separator ('12.34' / '1200')."""
     if currency in ZERO_DECIMAL:
         return str(minor)
     return f"{minor // 100}.{minor % 100:02d}"
 
 
 def display_amount(rng, minor, currency):
-    """How the amount appears on the receipt (symbols, commas, codes)."""
     plain = amount_string(minor, currency)
     sym = SYMBOL[currency]
     style = rng.random()
@@ -244,7 +218,6 @@ def display_amount(rng, minor, currency):
 
 
 def ocr_noise(rng, text):
-    """Light, realistic OCR damage: char swaps, dropped spaces, stray marks."""
     chars = list(text)
     for _ in range(rng.randint(1, 4)):
         i = rng.randrange(len(chars))
@@ -310,9 +283,6 @@ def render_order_email(rng, merchant, items_priced, total_display, date_str):
 
 
 def render_bank_notification(rng, merchant, total_display, date_str, time_str):
-    """A bank or card notification. The instrument is the account the message
-    is *about*, wherever the sentence puts it — first, last, or mid-sentence —
-    so position alone can't be the cue here; the role has to be."""
     card = instrument_name(rng)
     stamp = f" on {date_str}" if date_str else ""
     stamp += f" at {time_str}" if time_str else ""
@@ -328,13 +298,6 @@ def render_bank_notification(rng, merchant, total_display, date_str, time_str):
 
 
 def render_wallet_screenshot(rng, merchant, total_display, date_str, time_str):
-    """A Wallet / Apple Pay transaction screen, read top to bottom by Vision.
-
-    The layout is the whole lesson: the card is the heading, in the largest
-    type, exactly where a till receipt prints the shop. A model reading the
-    position rather than the meaning answers the card to "who was paid" — which
-    is how an Apple Pay screenshot used to be recorded as spending at Monzo.
-    """
     card = instrument_name(rng)
     lines = []
     if rng.random() < 0.3:
@@ -358,7 +321,6 @@ def render_casual_note(rng, merchant, total_display):
 
 
 def exact_parts(rng, total, n):
-    """n positive minor-unit parts that sum exactly to total."""
     if n <= 1 or total <= n:
         return [total]
     cuts = sorted(rng.sample(range(1, total), n - 1))
@@ -585,7 +547,6 @@ PROMPT_PURCHASE_EXAMPLE_LIMIT = 2
 
 
 def purchase_examples_line(rng, merchant, currency, filed):
-    """`filed` is [(category, item_pool, count)], rendered most-filed first."""
     parts = []
     for category, pool, count in sorted(filed, key=lambda f: (-f[2], f[0])):
         cited = []
@@ -611,7 +572,6 @@ def category_prompt_line(rng, category, exclude=None):
 
 
 def assemble_prompt(today, local_currency, existing, past_purchases, preferences, knowledge, content):
-    """Mirror of the prompt assembly in SpendingAgent.extract — keep in sync."""
     prompt = f"Today's date: {today.strftime('%Y-%m-%d')}\n"
     prompt += f"The user's local currency: {local_currency}\n\n"
     if existing:
@@ -631,7 +591,7 @@ def assemble_prompt(today, local_currency, existing, past_purchases, preferences
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--count", type=int, default=2000)
     ap.add_argument("--out", required=True)
     ap.add_argument("--seed", type=int, default=1)

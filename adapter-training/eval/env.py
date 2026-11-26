@@ -1,19 +1,3 @@
-"""The extraction agent's environment, in Python: tools, budget, schema.
-
-A *reference port* of the Swift the app runs — `ReceiptCalculator` and
-`ReceiptTextSearch` (Parsing.swift, AgentTools.swift), `LedgerSearch`
-(LedgerSearch.swift, the `searchRecords` tool) and `AgentToolBudgetState` — so trajectories can be
-generated and rewards computed in ordinary Python training stacks. The Swift
-is the source of truth: messages are copied verbatim, limits are the same
-numbers, and a change there must be made here too (the same discipline as
-make_training_data.py). `tests/test_env.py` pins the behaviour the agent
-depends on.
-
-The extraction JSON schema is not copied at all: it is read from
-LocalModelAgent.swift, so its descriptions and field order (reasoning first —
-it is the generation order) can't drift from what the app sends.
-"""
-
 import json
 import os
 import re
@@ -32,7 +16,6 @@ def _swift_string(literal):
 
 
 def extraction_schema():
-    """`LocalModelAgent.extractionSchema`, field for field, in order."""
     source = open(LOCAL_MODEL_AGENT, encoding="utf-8").read()
     block = source[source.index("static let extractionSchema"):]
     block = block[:block.index("])")]
@@ -74,9 +57,6 @@ CALC_DESCRIPTION, SEARCH_DESCRIPTION, LEDGER_DESCRIPTION, LEDGER_QUERY_GUIDE, LE
 
 
 def tool_definitions(with_ledger=True):
-    """The OpenAI-shaped tool list `LocalModelAgent.extractionTools` sends.
-    The app leaves `searchRecords` out when the ledger is empty; every eval
-    profile has records, so `with_ledger` stands for that here."""
     tools = [
         {"type": "function", "function": {"name": "calculator", "description": CALC_DESCRIPTION, "parameters": {
             "type": "object", "properties": {"expression": {"type": "string", "description":
@@ -310,7 +290,6 @@ ZERO_DECIMAL_CURRENCIES = {"JPY", "KRW", "VND", "CLP", "ISK", "UGX", "RWF", "XOF
 
 
 def minor_units(raw, currency):
-    """SpendingParsers.minorUnits(fromDecimalString:currencyCode:)."""
     cleaned = "".join(c for c in raw if c.isdigit() or c in ".,-")
     if not cleaned:
         return None
@@ -333,12 +312,10 @@ def minor_units(raw, currency):
 
 
 def decimal_string(minor, currency):
-    """SpendingParsers.decimalString(fromMinorUnits:currencyCode:)."""
     return str(minor) if currency.upper() in ZERO_DECIMAL_CURRENCIES else f"{minor / 100:.2f}"
 
 
 def purchase_description(note):
-    """CategoryFit.purchaseDescription(of:)."""
     t = note.strip()
     if ":" not in t:
         return t
@@ -350,7 +327,6 @@ def purchase_description(note):
 
 
 def common_spelling(names):
-    """CategoryFit.commonSpelling(of:): most frequent, ties alphabetical."""
     counts = {}
     for n in names:
         counts[n] = counts.get(n, 0) + 1
@@ -366,7 +342,6 @@ LEDGER_MIN_CADENCE = 3
 
 
 def ledger_tokens(query):
-    """LedgerSearch.tokens(of:)."""
     folded = normalized_for_matching(query).lower()
     out = []
     for piece in re.split(r"[^\w]+|_", folded):
@@ -380,7 +355,6 @@ def _entry_day(entry):
 
 
 def ledger_hits(query, amount, entries):
-    """LedgerSearch.hits(query:amount:in:), as dicts."""
     tokens = ledger_tokens(query)
     wants_amount = bool(amount.strip())
     if not tokens and not wants_amount:
@@ -409,7 +383,6 @@ def ledger_hits(query, amount, entries):
 
 
 def ledger_cadence(days):
-    """LedgerSearch.cadence(of:) over yyyy-MM-dd strings."""
     from datetime import date as _date
     if len(days) < LEDGER_MIN_CADENCE:
         return None
@@ -465,7 +438,6 @@ def _ledger_line(group, tokens):
 
 
 def ledger_lines(hits, query):
-    """LedgerSearch.lines(for:query:): one line per merchant and category."""
     order, groups = [], {}
     for h in hits:
         key = punctuation_stripped(h["entry"]["merchant"]) + "|" + h["entry"].get("category", "").lower()
@@ -481,7 +453,6 @@ def ledger_lines(hits, query):
 
 
 def ledger_answer(query, amount, entries):
-    """LedgerSearch.answer(query:amount:in:) -> (message, summary)."""
     amount = amount.strip()
     if not ledger_tokens(query) and not amount:
         return 'Give a word or name from the content, the amount printed in it (e.g. "27.99"), or both.', "invalid lookup"
@@ -504,8 +475,6 @@ class ToolBudget:
 
     @property
     def is_spent(self):
-        """Asked past the budget more often than allowed: the caller ends the
-        tool phase and takes the answer."""
         return self.refusals > self.max_refusals
 
     def _refusal(self, message, summary):
@@ -561,8 +530,6 @@ class ToolBudget:
 
 
 def argument_value(name, arguments):
-    """LocalModelAgent.argumentValue: a single-argument tool takes whatever the
-    one value is — an object, a JSON string, or the bare text."""
     if isinstance(arguments, dict):
         if name in arguments:
             return str(arguments[name])
@@ -578,8 +545,6 @@ def argument_value(name, arguments):
 
 
 class Episode:
-    """One extraction's tool state: the receipt text, the ledger snapshot and
-    the shared budget. `call` never raises, like the app's tools."""
 
     def __init__(self, content, ledger, with_ledger=True):
         self.content, self.ledger, self.with_ledger = content, ledger, with_ledger

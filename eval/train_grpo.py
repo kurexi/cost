@@ -1,71 +1,4 @@
 #!/usr/bin/env python3
-"""GRPO for the spending agent, starting from an SFT student's LoRA.
-
-    python3 train_grpo.py --model /path/to/Qwen3.5-0.8B --init-adapter sft/student-sft \\
-        --suite train-rl --out grpo/student-grpo --steps 80
-
-Every step takes `--cases` cases from a train suite and runs `--group`
-sessions on each with sampling. These are whole sessions of the real loop
-(`run.py`'s `run_case`: a fresh ledger, the tools, compaction, the budget,
-the answer), with the student generating in this process. Each session is
-graded with `grade.reward`: the fields, -1 for no draft, the cost of wasted
-calls, and the approval terms, -0.45 for a wrong draft confident enough to
-be approved and +0.05 for a right one. The student is then pushed towards
-the sessions that beat their group's mean:
-
-    advantage(x)_i = (x_i - mean(x_group)) / (std(x_group) + eps)
-
-The reward is split in two. Its approval term (`grade.approval_term`: the
-bonus, the penalty or nothing) is what the confidence number decides, so its
-advantage goes to the tokens that write that number and to nothing else; the
-rest of the reward (the fields, no draft, wasted calls) goes to every other
-completion token. With one advantage over the whole session, the
-confidence would be credited with whatever the fields earned and move
-nowhere, staying as high on wrong drafts as on right ones.
-
-    loss = - sum over other tokens of A_fields_i * logprob / completion tokens
-           - w * sum over sessions of A_approval_i * mean confidence-token logprob / sessions
-           + beta * sum over tokens of KL_t / completion tokens
-
-The first sum is averaged per token, not per completion: averaged per
-completion, a one-token stop would carry its whole weight on the token that
-decides it, which teaches a student to stop after one tool round. The confidence term is averaged per session, so a session's
-confidence decision weighs as much as all its other tokens together (`w`,
-`--confidence-weight`, 1); averaged per token, three digits among a
-thousand tokens would teach almost nothing. The KL term (`--kl`, the k3
-estimator, `exp(ref - logp) - (ref - logp) - 1`) holds the student near the
-adapter it started from, loaded beside it as a frozen `reference` adapter;
-without it, categories drift on real shops. LoRA dropout is off, so the policy that scores the tokens is the
-one that sampled them. One update per batch of sessions, so there is no
-ratio to clip. A group whose sessions all earned the same teaches nothing
-through that part of the reward.
-
-The answer is sampled under the grammar a served model answers under: vLLM
-compiles the request's JSON schema with xgrammar (whitespace allowed), and
-so does `AnswerGrammar` here, masking the logits of every answer row while
-tool rounds stay free text. Sampled without it, most of the reward's rise
-is the student learning to stay inside the schema, which a served model's
-grammar does for it. An answer that still isn't a JSON object
-within the schema (cut off at the token limit) is graded as no draft (-1).
-`--no-grammar` samples without it.
-
-Sessions run in threads and their requests are generated in batches
-(`Batcher`): each session waits for its reply while the others' requests
-join the same batch. A session's tool rounds share their prefix (each
-prompt is the previous prompt, its completion and the tool answers), so
-they are scored in one forward pass; the answer prompt adds the closing
-turn, which re-renders the earlier turns, so it is scored on its own.
-
-Training suites only: `dev`, `dev-novel` and `holdout` are refused, as in
-`sft_data.py`, and a train case whose content one of them contains word for
-word is left out. Writes `train_log.jsonl` (a line per step), `train_args.json`,
-the adapter, and a checkpoint every `--save-every` steps that a rerun
-resumes from. With `--keep-every N` the adapter of every N-th step, and of
-the last, is also kept as `step-NNN/`, so a later step that trained past
-the best one doesn't replace it: the candidates are scored afterwards on a
-suite of their own.
-"""
-
 import argparse
 import concurrent.futures
 import json
@@ -111,9 +44,6 @@ def check_suite(meta):
 
 
 def without_frozen_content(cases):
-    """The cases whose content no frozen suite contains. The generators draw
-    non-spending messages from a small pool, so a train suite repeats some of
-    `dev`'s word for word; training on those would score them from memory."""
     frozen = set()
     for name in FROZEN_SUITES:
         if os.path.exists(os.path.join(suite_folder(name), "meta.json")):
@@ -125,8 +55,6 @@ ADAPTER_FILES = ("adapter_config.json", "adapter_model.safetensors")
 
 
 def kept_steps(steps, keep_every):
-    """The steps whose adapter is kept as `step-NNN/`: every `keep_every`-th
-    and the last, which `steps` need not be a multiple of."""
     if not keep_every:
         return []
     return sorted({*range(keep_every, steps + 1, keep_every), steps})
@@ -137,8 +65,6 @@ def snapshot_folder(out, step):
 
 
 def keep_snapshot(checkpoint, folder):
-    """Copy the checkpoint's adapter to `folder`, whole or not at all: it
-    is written beside it and renamed into place."""
     partial = folder + ".partial"
     shutil.rmtree(partial, ignore_errors=True)
     os.makedirs(partial)
@@ -149,9 +75,6 @@ def keep_snapshot(checkpoint, folder):
 
 
 def group_advantages(rewards, group):
-    """Per session, its reward against its group's: `rewards` holds a group's
-    sessions next to each other, and None for a session that ran no model
-    (content rejected before the first call), whose group teaches nothing."""
     advantages = []
     for start in range(0, len(rewards), group):
         members = rewards[start:start + group]
@@ -165,12 +88,6 @@ def group_advantages(rewards, group):
 
 
 def chains(generations):
-    """The token sequences that score a session's completions: a generation
-    whose prompt starts with the sequence before it, token for token,
-    extends that sequence; any other starts its own. Each is
-    {"ids", "spans", "confidence"}, a span being the [start, end) of one
-    completion and `confidence` the positions that write the answer's
-    confidence number."""
     out = []
     for g in generations:
         if not g.completion_ids:
@@ -188,11 +105,6 @@ def chains(generations):
 
 
 def confidence_positions(decode, completion_ids):
-    """Which of an answer's tokens write its confidence number: none unless
-    the number is the last field of a finished answer, since a cut-off
-    answer is no draft whatever its confidence. Found from the end, where an
-    answer is plain ASCII, so a suffix of the tokens decodes to a suffix of
-    the text."""
     text = decode(completion_ids)
     found = list(CONFIDENCE.finditer(text))
     if not found or not ANSWER_END.fullmatch(text[found[-1].end():]):
@@ -213,10 +125,6 @@ def confidence_positions(decode, completion_ids):
 
 
 def token_weights(chain, field_advantage, approval_advantage, tokens, sessions, confidence_weight):
-    """What each completion position's logprob is multiplied by in the loss
-    (before the minus): the fields' advantage per token over the step's
-    completion tokens, and on the confidence positions the approval
-    advantage, split over them and averaged per session."""
     confidence = set(chain["confidence"])
     share = confidence_weight * approval_advantage / (max(1, len(confidence)) * sessions)
     return [share if t in confidence else field_advantage / tokens
@@ -228,8 +136,6 @@ def completion_tokens(session_chains):
 
 
 def outside_grammar(content):
-    """Whether a served model's grammar would have forbidden this answer: it
-    must be one JSON object, within the bounded schema."""
     import jsonschema
     try:
         answer = json.loads((content or "").strip())
@@ -244,9 +150,6 @@ def answer_text(transcript):
 
 
 def episode_reward(case, user, row, transcript):
-    """The session's reward, the part of it the approval decided, and its
-    scores; None for a case rejected before any model call, which teaches
-    nothing."""
     scores = score_case(case, row, user)
     if scores is None:
         return None, None, None
@@ -257,16 +160,11 @@ def episode_reward(case, user, row, transcript):
 
 
 def split_advantages(rewards, approvals, group):
-    """The advantages of the reward without its approval term, and of the
-    approval term alone."""
     fields = [None if r is None else r - a for r, a in zip(rewards, approvals)]
     return group_advantages(fields, group), group_advantages(approvals, group)
 
 
 class Batcher:
-    """Requests from concurrent sessions, generated together. A batch is sent
-    when it is full, when every live session is waiting in it, or `wait`
-    seconds after its first request, whichever comes first."""
 
     def __init__(self, generate, batch_size, wait=0.5):
         self.generate, self.batch_size, self.wait = generate, batch_size, wait
@@ -294,8 +192,6 @@ class Batcher:
             self.condition.notify_all()
 
     def serve(self):
-        """Generate batches until no session is left. Runs on the caller's
-        thread, so the model is only ever used from one."""
         while True:
             with self.condition:
                 while not self.pending and self.live:
@@ -318,11 +214,6 @@ class Batcher:
 
 
 class PolicyBackend(ChatBackend):
-    """The real client with the network replaced by the student: each body
-    is rendered with the chat template the way a server renders it, handed
-    to the batcher, and the reply returned as a server would return a
-    template's text. Every generation is kept for training. With
-    `constrain`, an answer asked for on a JSON schema is sampled under it."""
 
     def __init__(self, batcher, render, tokenizer, tokenizer_lock, constrain=False):
         super().__init__("http://policy/v1", "policy", reasoning_effort="none", one_request_at_a_time=False)
@@ -358,13 +249,6 @@ def cut(row, max_tokens, end_of_turn):
 
 
 class AnswerGrammar:
-    """The JSON schemas of answer requests, compiled the way vLLM compiles a
-    `json_schema` response format (xgrammar, whitespace allowed), once each,
-    with one difference: a run of whitespace between elements is capped at
-    `WHITESPACE_RUN_LIMIT` characters. Sampled at temperature 1, an answer
-    can fall into whitespace for good, and in a static batch that one row
-    holds every other for the full answer budget; the student's own JSON
-    needs a newline and an indent of a few spaces."""
 
     def __init__(self, tokenizer_info):
         import xgrammar
@@ -374,8 +258,6 @@ class AnswerGrammar:
         self.compiled = {}
 
     def compile(self, schema):
-        """Compiled from the schema as written: the grammar keeps its key
-        order, and `reasoning` must come first."""
         key = json.dumps(schema)
         if key not in self.compiled:
             self.compiled[key] = self.compiler.compile_json_schema(key, any_whitespace=True,
@@ -387,10 +269,6 @@ class AnswerGrammar:
 
 
 class GrammarMask:
-    """A logits processor for one batch: rows with a grammar have every
-    token it forbids masked out, rows without one (tool rounds) are left
-    alone, and a row whose grammar has ended is left to the generator, which
-    pads it."""
 
     def __init__(self, grammar, compiled, prompt_width):
         x = grammar.xgrammar
@@ -420,10 +298,6 @@ class GrammarMask:
 
 
 def sampler(model, pad_id, end_of_turn, temperature, device, autocast, grammar=None):
-    """Sampling at `temperature` from the plain softmax (no top-k, top-p or
-    repetition penalty, whatever the checkpoint's defaults), so the tokens
-    are drawn from the distribution the update scores them under; with
-    `grammar`, each answer row within its schema, as a server samples it."""
     import torch
     from transformers import GenerationConfig, LogitsProcessor, LogitsProcessorList
 
@@ -458,8 +332,6 @@ def sampler(model, pad_id, end_of_turn, temperature, device, autocast, grammar=N
 
 
 def rollouts(cases, users, group, batcher, make_backend, settings, threads):
-    """`group` sessions per case, all at once; returns per session the case,
-    the result row, the transcript and the generations, in case order."""
     jobs = [case for case in cases for _ in range(group)]
 
     def one(case):
@@ -479,11 +351,6 @@ def rollouts(cases, users, group, batcher, make_backend, settings, threads):
 
 
 def chain_logprobs(model, chain, device):
-    """The logprob of each of a chain's completion tokens under the active
-    adapter, in span order. Logits are kept from the first completion on,
-    and the softmax taken only at completion positions: over a 248k
-    vocabulary, the tool answers between completions would otherwise cost
-    gigabytes."""
     import torch
     ids = chain["ids"]
     first = chain["spans"][0][0]
@@ -497,9 +364,6 @@ def chain_logprobs(model, chain, device):
 
 
 def use_adapter(model, name):
-    """Make `name` the active adapter while only the trained one keeps
-    gradients: peft's `set_adapter` would make whichever is active
-    trainable."""
     model.set_adapter(name)
     for parameter_name, parameter in model.named_parameters():
         if "lora_" in parameter_name:
@@ -542,9 +406,6 @@ def step_entry(step, results, rewards, advantages, groups_with_signal, rollout_s
 
 
 def case_order(cases, steps, per_step, seed):
-    """The cases each step takes: the suite shuffled, then reshuffled for
-    every further pass, the same for a given seed so a resumed run takes
-    up where it left off."""
     rng = random.Random(seed)
     order = []
     while len(order) < steps * per_step:
@@ -555,7 +416,7 @@ def case_order(cases, steps, per_step, seed):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True, help="the base checkpoint the adapter was trained on")
     ap.add_argument("--init-adapter", required=True, help="the SFT LoRA adapter to continue")
     ap.add_argument("--suite", required=True, help="a train suite (suites/<name>)")

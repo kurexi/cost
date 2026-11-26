@@ -143,7 +143,6 @@ class ScoreTests(unittest.TestCase):
 
 
 class GradingPolicyTests(unittest.TestCase):
-    """The judgement calls: what counts as right when the content doesn't decide."""
 
     @classmethod
     def setUpClass(cls):

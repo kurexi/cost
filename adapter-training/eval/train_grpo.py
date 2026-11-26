@@ -1,30 +1,4 @@
 #!/usr/bin/env python3
-"""GRPO with a verifiable reward, over full tool-using episodes.
-
-Each step takes `--prompts` training samples, rolls out `--group` episodes
-for each with sampling (the same loop `run.py` drives: tool phase against the
-sample's receipt and ledger under the app's budget, then the schema-
-constrained answer), scores every episode with `grade.reward` against the
-gold record, and pushes the policy towards the episodes that beat their
-group's mean:
-
-    advantage_i = (r_i - mean(r_group)) / (std(r_group) + eps)
-    loss        = - sum_i advantage_i * mean_logprob(completions of episode i)
-
-over every completion the policy produced in the episode (tool calls, the
-end of the tool phase, the JSON answer), with the logprobs recomputed under
-the current policy on the token ids it generated. One update per batch of
-rollouts, so the PPO ratio is 1 and no clipping is needed; no KL term (the
-grammar and the reward's -1 for an undecodable answer keep it on the rails —
-add one with --kl if you train long enough to drift). Groups whose rewards
-are all equal teach nothing and are skipped.
-
-Starts from a LoRA adapter (normally the SFT one) and keeps training it:
-
-    python3 train_grpo.py --model /path/to/Qwen3.5-0.8B --init-adapter adapters/sft \
-        --gold data/train.jsonl --out adapters/grpo --steps 20 --prompts 2 --group 4
-"""
-
 import argparse
 import json
 import math
@@ -54,7 +28,7 @@ def completion_logprob(model, prompt_ids, completion_ids, device):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--init-adapter", required=True)
     ap.add_argument("--gold", required=True)

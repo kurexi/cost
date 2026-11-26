@@ -1,63 +1,4 @@
 #!/usr/bin/env python3
-"""Supervised fine-tuning pairs from a teacher's sessions on a train suite.
-
-    python3 sft_data.py teacher-train teacher-train-2 --template /path/to/Qwen3.5-0.8B \\
-        --out sft/teacher-train+teacher-train-2.jsonl --tokenizer /path/to/Qwen3.5-0.8B --max-len 8192
-
-One or more teacher runs, each on a train suite, become one pairs file.
-
-Keeps the sessions whose case graded `record_all` (`runs/<run>/grade.json`),
-and only from a train suite: a run on `dev` or `holdout` is refused, because
-training on them would make every later score on them meaningless. A train
-case whose content a frozen suite repeats word for word (the generators draw
-non-spending messages from a small pool) is left out and counted as
-`frozen_content`, as `train_grpo.py` leaves it out: trained on, it would be
-scored from memory.
-
-Every model call of a kept session becomes one (prompt, completion) pair,
-and the prompt is the request exactly as `spending_agent` sent it. The
-transcript keeps the final, compacted conversation and the raw replies, not
-each request, so the requests are rebuilt by replaying the session: the
-first two messages, then for every model call the loop's compaction, the
-assistant turn it appended and the tool answers it got. A replay that
-doesn't end on the transcript's own final conversation is dropped and
-counted, never guessed at. The rebuilt requests are what the backend sends:
-
-- a tool round: the conversation with `TOOL_DEFINITIONS`, `tool_choice` auto;
-- the answer: the conversation plus `CLOSING`, without tools, and with the
-  field guide appended where the ladder fell back to a format whose grammar
-  doesn't name the fields.
-
-Thinking is off (`enable_thinking` false), as in the runs, so each prompt ends
-in the template's empty think block and the completion is the reply that
-follows it, through `<|im_end|>`. The template renders both, so a pair is
-always the prompt and the rest of the same conversation rendered once more
-with the reply appended. Kinds:
-
-- `tool_call`: a reply that asked for tools, with any words written before
-  the calls, which the loop kept in the conversation;
-- `end_tools`: a reply that asked for none, which ends the tool phase. The
-  loop drops its text, so the target is an empty reply by default: what
-  matters is not calling a tool, and a teacher's paragraph there is decode
-  time spent on nothing (`--end-tools-text teacher` keeps it);
-- `answer`: the `RecordDraft` JSON;
-- `doubt`: with `--doubt-confidence`, the answer of a session that drafted
-  the wrong record (graded, answered, not `record_all`), with its
-  `confidence` replaced by that value and `train_spans` naming the number's
-  characters in the completion, so the trainer learns that one number and
-  nothing else from it: the wrong fields stay context, never targets, and
-  the session's tool rounds aren't used. Keeping only the right sessions
-  taught the student that every draft is a sure one (0.936 on right drafts
-  against 0.934 on wrong ones on `dev`); the gold says which drafts were
-  wrong, so no model has to judge itself to know where confidence belongs
-  low.
-
-With `--tokenizer`, pairs longer than `--max-len` tokens are dropped rather
-than left to the trainer, which would cut the start of the prompt (the
-instructions) to fit, and `--verify-template` checks the renderer against
-`transformers`' `apply_chat_template` on every request of the first sessions.
-"""
-
 import argparse
 import json
 import os
@@ -97,7 +38,6 @@ class ReplayMismatch(Exception):
 
 
 def replay(transcript):
-    """The requests a session sent, in order, rebuilt from its transcript."""
     final = transcript.get("messages") or []
     if len(final) < 2:
         return []
@@ -137,8 +77,6 @@ def replay(transcript):
 
 
 def for_template(message):
-    """A message as the server hands it to the template: tool-call arguments
-    as an object, which the template walks parameter by parameter."""
     if not message.get("tool_calls"):
         return message
     calls = []
@@ -156,7 +94,6 @@ def for_template(message):
 
 
 def target_turn(request, end_tools_text="empty"):
-    """The assistant turn the student is taught to write for one request."""
     reply = request.reply
     if request.kind == "tool_call":
         return _assistant_turn(reply, tool_calls_of(reply))
@@ -194,9 +131,6 @@ def confidence_match(text):
 
 
 def doubt_pair(render, request, confidence):
-    """The answer pair of a session that drafted the wrong record: the
-    teacher's JSON with its confidence set to `confidence`, trained on that
-    number only."""
     content = without_thinking(request.reply.get("content") or "")
     found = confidence_match(content)
     value = f"{confidence:g}"
@@ -219,9 +153,6 @@ def _raise(message):
 
 
 class ChatTemplate:
-    """A Hugging Face chat template rendered the way `transformers` renders
-    it (same Jinja settings, `tojson` and `raise_exception`), so the prompts
-    here are byte for byte the ones `apply_chat_template` makes."""
 
     def __init__(self, source):
         from jinja2.ext import loopcontrols
@@ -235,7 +166,6 @@ class ChatTemplate:
 
     @classmethod
     def load(cls, where):
-        """`where` is a template file, a model folder, or a Hugging Face model id."""
         if os.path.isfile(where):
             return cls(_template_text(where))
         if os.path.isdir(where):
@@ -276,14 +206,12 @@ def kept_case_ids(folder):
 
 
 def doubted_case_ids(folder):
-    """The cases the teacher answered with a draft that wasn't right in every field."""
     with open(os.path.join(folder, "grade.json"), encoding="utf-8") as f:
         per_case = json.load(f)["per_case"]
     return {row["id"] for row in per_case if row.get("answered") and not row.get("record_all")}
 
 
 def frozen_contents():
-    """The content of every case of the frozen suites that are present."""
     contents = set()
     for name in FROZEN_SUITES:
         try:
@@ -298,7 +226,6 @@ def frozen_case_ids(cases, frozen):
 
 
 def run_cases(meta):
-    """The run's suite, refused unless it is the one the run was made on."""
     suite_meta, cases, _ = load_suite(meta["suite"])
     if suite_meta.get("fingerprint") != meta.get("suite_fingerprint"):
         raise SystemExit(f"run {meta.get('name')} was made on {meta['suite']} {meta.get('suite_fingerprint')}, "
@@ -307,7 +234,6 @@ def run_cases(meta):
 
 
 def combined(all_stats):
-    """One run's stats, or several runs' added up."""
     total = {}
     for stats in all_stats:
         for key, value in stats.items():
@@ -385,7 +311,6 @@ def first_difference(a, b):
 
 
 def verify_template(render, tokenizer, transcripts, sessions=20):
-    """Raises unless the renderer and `transformers` agree on every request."""
     checked = 0
     for transcript in transcripts[:sessions]:
         for request in replay(transcript):
@@ -402,7 +327,7 @@ def verify_template(render, tokenizer, transcripts, sessions=20):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+", help="teacher runs on train suites, under runs/")
     ap.add_argument("--template", required=True,
                     help="the student's chat template: a model folder, a template file or a Hugging Face id")

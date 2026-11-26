@@ -1,5 +1,3 @@
-"""Loading a suite and turning one of its users into a ledger folder."""
-
 import json
 import os
 import sys
@@ -43,9 +41,6 @@ def load_suite(name_or_path):
 
 
 def materialize(user, today, folder):
-    """A fresh ledger for one case: the user's categories, tags, memory, and
-    the records dated on or before the case's today (a record from the
-    future would tell the agent what it can't know)."""
     ledger = Ledger.create(folder, user["categories"], user["tags"])
     for row in user["records"]:
         if row["date"] <= today:

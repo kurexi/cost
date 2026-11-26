@@ -1,7 +1,3 @@
-"""The agent's contract: instructions, prompt, tool definitions and the
-`RecordDraft` answer. These strings are what the model sees, so they are the
-contract the eval fingerprints and the Swift port copies verbatim."""
-
 import hashlib
 import json
 from decimal import Decimal
@@ -99,9 +95,6 @@ FIELD_SHAPES = {
     "note": {"maxLength": 160},
     "confidence": {"minimum": 0, "maximum": 1},
 }
-"""The schema is the generation grammar: a pattern makes a malformed amount,
-code, date or time impossible to emit, and a length cap ends a field a model
-would otherwise repeat itself in until the token limit cuts the answer."""
 
 
 def answer_schema():
@@ -189,8 +182,6 @@ def assemble_prompt(today, local_currency, categories, tags, preferences, memory
 
 
 def contract_fingerprint():
-    """A hash of everything the model is given besides the user's data. Runs
-    with different fingerprints are not comparable."""
     blob = json.dumps({"instructions": INSTRUCTIONS, "closing": CLOSING, "schema": answer_schema(),
                        "tools": TOOL_DEFINITIONS}, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
@@ -233,8 +224,6 @@ def _parse_object(text):
 
 
 def _amount_text(value):
-    """The amount as text for `minor_units`: a JSON number written out in plain
-    decimal (never `1e+21`), a string as the model wrote it."""
     if isinstance(value, bool):
         return ""
     if isinstance(value, (int, float)):
@@ -274,8 +263,6 @@ def _confidence(value):
 
 
 def decode_draft(text):
-    """Lenient: the reply is untrusted text. Returns None when no JSON object
-    can be found at all."""
     obj = _parse_object(text)
     if obj is None:
         return None

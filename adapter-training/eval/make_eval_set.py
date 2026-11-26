@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""The adapter's multilingual receipt set: the agent's receipt generator
-(`agent/eval/receipts.py`) with each sample's `prompt` assembled the way
-`SpendingAgent.extractionPrompt` assembles it (via
-make_training_data.assemble_prompt), so any model can be run on it with
-`common.INSTRUCTIONS` as the system turn. Train and eval use different seeds,
-so their users, ledgers and invented instrument names never overlap.
-
-    python3 make_eval_set.py --split eval  --per-locale 40  --seed 7
-    python3 make_eval_set.py --split train --per-locale 400 --seed 1
-
-Stdlib only.
-"""
-
 import argparse
 import os
 import random
@@ -27,7 +14,7 @@ def extraction_prompt(profile, today, past, preferences, content):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--split", required=True, help="name used in the output files, e.g. eval or train")
     ap.add_argument("--per-locale", type=int, default=40, help="samples per home locale")
     ap.add_argument("--users-per-locale", type=int, default=2)

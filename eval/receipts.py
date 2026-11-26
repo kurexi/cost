@@ -1,23 +1,3 @@
-"""Multilingual receipts with gold records, from simulated users.
-
-Each sample is one piece of shared content (a till receipt as OCR reads it,
-an order email, a bank notification, a wallet screen or a quick note) in
-one of seven home locales, from one simulated user whose categories and
-ledger it is judged against, with:
-
-- `gold`: the record the content should produce, plus what a fair grade
-  needs: accepted merchant spellings, how strictly the payment instrument
-  is graded, acceptable proposal titles, the items for the note;
-- `traits`: what makes the sample hard (no printed total, cash change, a
-  price-reduction line, OCR column split, a card heading, travel, a merchant
-  the user files two ways...), so results can be broken down by failure mode.
-
-Users (`make_profile`) carry the ledger the content is judged against.
-`make_suite.py` builds the agent's suites on top of these samples.
-
-Stdlib only.
-"""
-
 import random
 import unicodedata
 from datetime import date, timedelta
@@ -28,8 +8,6 @@ ZERO_DECIMAL = {"JPY", "KRW"}
 
 
 def fold(text):
-    """Letters and digits only, NFKC-folded and lowercased: the loosest form
-    names are compared in, with the width folding CJK receipts need."""
     text = unicodedata.normalize("NFKC", text or "")
     text = "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
     return "".join(c for c in text.lower() if c.isalnum())
@@ -51,7 +29,6 @@ LOCAL_CURRENCY_PREFERENCE = "Record spending in the local currency of the place 
 
 
 def ledger_amount(loc, minor):
-    """How a past-purchase line shows an amount (locale-formatted)."""
     cur = loc["currency"]
     p = gold_amount_string(minor, cur)
     if cur == "GBP":
@@ -113,7 +90,6 @@ def make_profile(rng, home, index, today, locales=None):
 
 
 def category_lines(profile):
-    """Each category title with up to four of the merchants filed under it, most-filed first."""
     lines = []
     for title in profile["categories"]:
         counts = {}
@@ -126,11 +102,6 @@ def category_lines(profile):
 
 
 def past_purchase_lines(profile, content):
-    """Ledger merchants the content names, at most two, most-filed first, each
-    with up to three categories and two recent citations per category. A
-    merchant counts as named when its folded ledger spelling occurs in the
-    folded content, so a till that prints a different form of the name gets
-    no line."""
     loc = LOCALES[profile["home"]]
     hay = fold(content)
     by_merchant = {}
@@ -157,10 +128,7 @@ def past_purchase_lines(profile, content):
     return lines
 
 
-
 def light_ocr_noise(rng, line):
-    """Damage letters only (never digits), so the gold total stays the one a
-    person would read off the paper."""
     swaps = {"O": "0", "l": "1", "I": "l", "S": "5", "B": "8", "e": "c", "rn": "m"}
     for a, b in rng.sample(list(swaps.items()), 2):
         if a in line and rng.random() < 0.5:
@@ -329,7 +297,6 @@ def render_casual(rng, loc, merchant, total, today, traits):
     return content, total, when
 
 
-
 def build_sample(rng, profile, index, locales=None, prompt=None):
     locales = locales or LOCALES
     home = profile["home"]
@@ -437,8 +404,6 @@ def build_sample(rng, profile, index, locales=None, prompt=None):
 
 
 def finish(profile, index, today, content, gold, traits, language, style, preferences, past, prompt):
-    """`prompt`, when given, renders the sample's prompt for a caller that
-    needs one: prompt(profile, today, past, preferences, content)."""
     sample = {
         "id": f"{profile['id']}-{index:04d}",
         "profile": profile["id"],

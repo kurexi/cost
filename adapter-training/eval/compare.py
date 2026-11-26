@@ -1,28 +1,4 @@
 #!/usr/bin/env python3
-"""Compare runs side by side, on the samples they share.
-
-    python3 compare.py base-tools bonsai-27b                 # names under runs/
-    python3 compare.py base-tools iter_r1 iter_r2 --metric amount
-    python3 compare.py runs/a/predictions.jsonl /content/old/b/grade.json
-
-Each argument is a run name (`runs/<name>/`), a run directory, a
-`predictions.jsonl` or a `grade.json`. Predictions are graded from scratch
-against `--gold`, so a run graded by an older grader is re-graded the same
-way as the others. A `grade.json` is used as it is.
-
-Only the samples every run answered are compared. Two runs with different
-`--limit`s would otherwise be scored on different receipts, and the
-difference would be the sample, not the model.
-
-Prints:
-1. every headline metric, one row per run, with the change from the first
-   run (the baseline) to each of the others;
-2. one metric (`--metric`, default record_core) by language, style and trait;
-3. the samples whose verdict on that metric changed between the first and
-   the last run, with the counts that say whether the change is more than
-   noise.
-"""
-
 import argparse
 import json
 import math
@@ -38,7 +14,6 @@ HEADLINE = ["record_core", "record_all", "is_spending", "amount", "currency", "m
 
 
 def load(arg, gold):
-    """(label, per-sample rows) for a run name, directory, predictions or grade file."""
     path = arg
     if not os.path.exists(path):
         path = os.path.join(HERE, "runs", arg)
@@ -70,8 +45,6 @@ def groups(rows):
 
 
 def sign_test(wins, losses):
-    """Two-sided exact sign test (McNemar on the discordant pairs): the chance
-    of a split at least this lopsided if both runs were equally good."""
     n = wins + losses
     if n == 0:
         return 1.0
@@ -81,7 +54,7 @@ def sign_test(wins, losses):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+", help="first = baseline")
     ap.add_argument("--gold", default=os.path.join(HERE, "data", "eval.jsonl"))
     ap.add_argument("--metric", default="record_core")

@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""Ask a server which answer formats it accepts, before spending GPU time on a run.
-
-    python3 probe_formats.py --base-url http://127.0.0.1:8090/v1 --model qwen
-
-Sends one tiny tool round, as every session starts with (`tools` and
-`tool_choice: "auto"`; vLLM refuses it unless started with
-`--enable-auto-tool-choice` and a `--tool-call-parser`, and then every case
-fails), and one tiny request per variant of the answer schema (the full bounded
-schema, then with one kind of bound removed at a time, then with none) and
-prints whether the server accepted it, with its refusal when it didn't. The
-agent uses the first rung that works, so a refusal of the full schema here
-means a run will answer on `json_schema_plain`.
-"""
-
 import argparse
 import json
 import os
@@ -73,7 +59,7 @@ def probe_tool_round(base_url, model):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", required=True)
     ap.add_argument("--model", required=True)
     args = ap.parse_args()

@@ -1,39 +1,4 @@
 #!/usr/bin/env python3
-"""Run a model on the receipt set the way the app runs a local model, and
-record everything it did.
-
-The protocol is `LocalModelClient.complete`, step for step:
-
-1. **Tool phase** — system instructions + the assembled prompt, with the
-   three tools offered (`calculator`, `searchReceipt`, `searchRecords`).
-   Each round the model may call tools; the calls run against this sample's
-   receipt text and its user's ledger, under the app's `AgentToolBudget`
-   limits, and the results go back as tool turns. A round with no tool call
-   ends the phase and its text is dropped, as the app drops it. At most
-   `--max-rounds` rounds (the app's `maxToolRounds` is 10).
-2. **Structured answer** — the closing user turn the app sends ("Now give the
-   final answer as a single JSON object…") and one generation. With the
-   `openai` backend the request carries the app's JSON schema as
-   `response_format`; with the `hf` backend the same schema is enforced by
-   `constrained.ExtractionGrammar` (keys and order forced, values free).
-
-Every sample's full transcript (messages, raw generations, tool calls and
-answers, timings) is written next to the predictions, so the runs are the
-"reasoning history" a teacher model produces for distillation as much as an
-evaluation.
-
-    # a model served by Ollama / LM Studio / llama.cpp / vLLM
-    python3 run.py --backend openai --base-url http://localhost:11434/v1 \
-        --model qwen3:8b --gold data/eval.jsonl --name qwen3-8b
-
-    # a Hugging Face checkpoint on this machine (optionally + LoRA adapter)
-    python3 run.py --backend hf --model /path/to/Qwen3.5-0.8B \
-        --gold data/eval.jsonl --name base-0.8b --limit 84 --batch 8
-
-The run grades itself at the end (runs/<name>/grade.json). To compare runs:
-    python3 compare.py base-tools <name>
-"""
-
 import argparse
 import json
 import os
@@ -73,8 +38,6 @@ def text_before_calls(text):
 
 
 def auto_dtype(device):
-    """bfloat16, except on CUDA GPUs older than Ampere (T4, V100: compute
-    capability < 8), which only emulate it — float16 is their fast path."""
     import torch
     if str(device).startswith("cuda") and torch.cuda.get_device_capability(torch.device(device))[0] < 8:
         return "float16"
@@ -91,7 +54,6 @@ def default_device():
 
 
 class HFBackend:
-    """Batched generation with transformers (CPU or GPU)."""
 
     def __init__(self, model_path=None, adapter=None, dtype="auto", threads=None, model=None, tokenizer=None,
                  device=None):
@@ -159,8 +121,6 @@ class HFBackend:
 
 
 def describe_error(e):
-    """An HTTP error's status and the server's own explanation (llama-server
-    puts "the request exceeds the available context size" in the body)."""
     import urllib.error
     if isinstance(e, urllib.error.HTTPError):
         try:
@@ -172,8 +132,6 @@ def describe_error(e):
 
 
 class OpenAIBackend:
-    """An OpenAI-compatible chat-completions server, one request at a time
-    (the app's LocalModelGate does the same)."""
 
     def __init__(self, base_url, model, api_key=None, timeout=600, template_kwargs=None):
         self.base, self.model, self.key, self.timeout = base_url.rstrip("/"), model, api_key, timeout
@@ -253,9 +211,6 @@ def _report(progress, phase, done_batches, total_batches, finished, total, token
 
 
 def run_hf(backend, states, args, tools, schema):
-    """Tool rounds in batches until every sample has stopped calling tools (or hit
-    max_rounds), then the schema-constrained answers. With args.progress (default
-    on) prints a line after every batch."""
     progress = getattr(args, "progress", True)
     started, total = time.time(), len(states)
     pending = [s for s in states]
@@ -294,10 +249,6 @@ def run_hf(backend, states, args, tools, schema):
 
 
 def run_openai(backend, states, args, tools, schema):
-    """One sample at a time, as the app's LocalModelGate allows. A request that
-    fails (context overflow, timeout, a server error) fails that sample only:
-    its output stays empty — graded undecodable, as the app would park it —
-    and the error is kept in the transcript."""
     started = time.time()
     for n, s in enumerate(states, 1):
         t0 = time.time()
@@ -336,7 +287,7 @@ def run_openai(backend, states, args, tools, schema):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--backend", choices=["hf", "openai"], required=True)
     ap.add_argument("--model", required=True)
     ap.add_argument("--adapter", help="hf: a PEFT/LoRA adapter directory")

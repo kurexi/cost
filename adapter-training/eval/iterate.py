@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""Train → evaluate → repeat until the held-out score reaches a target.
-
-Each round builds more SFT trajectories from the train split (which never
-shares users, ledgers or invented instrument names with the eval split),
-continues training the LoRA adapter, runs the full eval set the way the app
-runs a local model, grades it, and stops as soon as `record_core` (spending
-verdict + amount + currency + merchant + category all exactly right) reaches
-`--target`. Every round's adapter, predictions, transcripts and grade are
-kept, and `rounds.jsonl` records the trajectory.
-
-    python3 iterate.py --model models/qwen35-08b --out work --target 0.95
-
-Designed for a machine with a GPU (Apple Silicon `mps` or CUDA): each round
-is minutes there and hours on a small CPU.
-"""
-
 import argparse
 import json
 import os
@@ -32,7 +16,7 @@ def sh(*args):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--target", type=float, default=0.95)

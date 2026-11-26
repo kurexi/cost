@@ -1,28 +1,4 @@
 #!/usr/bin/env python3
-"""Target trajectories for supervised fine-tuning, built from the gold labels.
-
-For every training sample this writes what the agent *should* have done, in
-the exact turn structure `run.py` (and the app's `LocalModelClient`) drives:
-
-- the tool phase: tool calls only where they help, with the environment's
-  real answers (env.Episode) — `calculator` over the item prices when the
-  receipt prints no total, `searchRecords` for a merchant the user files
-  two ways when the prompt's past-purchase line is missing; everywhere else a
-  one-line "no tools needed" that ends the phase at once (the app drops that
-  text, and every token of it costs ~70 ms on a phone);
-- the answer: the schema's JSON, `reasoning` first, which says out loud the
-  thing the sample is testing (the cash handed over is not the total, the
-  heading is the card, the receipt's currency beats the user's) before the
-  fields it conditions.
-
-Each record is a list of (prompt, completion) pairs, rendered with the
-model's chat template exactly as at inference: training sees the same text
-the runner will generate from.
-
-    python3 sft_data.py --model /path/to/Qwen3.5-0.8B --gold data/train.jsonl \
-        --out data/sft.jsonl --limit 240
-"""
-
 import argparse
 import json
 from datetime import date
@@ -59,7 +35,6 @@ def planned_calls(sample, profile):
 
 
 def item_prices(sample):
-    """The printed price of each gold item, as a dot-decimal string."""
     g = sample["gold"]
     lines = sample["content"].split("\n")
     out = []
@@ -180,7 +155,6 @@ def trajectory(tok, sample, profile, eos="<|im_end|>"):
 
 
 def balanced(samples, limit):
-    """Round-robin over home locales, putting the rarer traits first."""
     rare = {"no_printed_total", "ledger_lookup_useful", "tip", "was_price", "cash_change", "card_heading",
             "needs_proposal", "travel", "mixed_merchant"}
     by_home = {}
@@ -198,7 +172,7 @@ def balanced(samples, limit):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True, help="tokenizer / chat template source")
     ap.add_argument("--gold", required=True)
     ap.add_argument("--profiles")
