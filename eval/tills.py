@@ -1,36 +1,3 @@
-"""Varied till receipts: the layouts real tills print that `receipts.render_till`
-never does.
-
-`render_till` prints items, an optional subtotal and tax, a total and a
-payment line. Real receipts are messier, and a small model trained only on
-the tidy layout reads a messy one wrongly: a "TOTAL DISCOUNT 0.20" line
-taken for the grand total, a negative price cut added instead of subtracted,
-a per-rate VAT table summed into the total. This renderer prints the same
-purchase in the shapes real tills use, so the teacher's sessions (and the
-student trained on them) cover them:
-
-- quantity lines ("2 x 1.15") with the line total beside them, product
-  codes inside item names, VAT codes after prices, a lone currency heading;
-- negative lines that are money taken off: price cuts, multibuy savings,
-  member prices, coupons, bottle returns, printed "-0.20", "0,20-" or "△20";
-- small positive lines that are money paid: carrier bags, bottle deposits;
-- lines that say "total" or carry an amount and are not the total: total
-  discount, total savings, item counts, loyalty points;
-- a per-rate VAT/tax table (sales and tax by rate), in columns or cell by cell;
-- a card slip with masked numbers, printed before or after the VAT table,
-  whose amount is printed, blank or masked;
-- the grand total printed, printed only on the slip, or not printed at all,
-  so the record has to be added up from the lines (as a folded or cut-off
-  receipt, or a photo with the amount hidden, reads);
-- a logo the OCR misread, so the merchant must come from the user's records.
-
-The gold total is always what a careful person adds up from the paper: the
-item lines, minus every reduction, plus every charge (plus tax where tax is
-added at the till). Traits name each shape, so a run's score breaks down by
-it. Stdlib only. `make_suite.py --variety` turns it on; the frozen suites
-never use it.
-"""
-
 from locales import grouped
 from receipts import cash_tendered
 
@@ -173,7 +140,6 @@ SYMBOL = {"GBP": "£", "USD": "$", "CNY": "¥", "JPY": "¥", "EUR": "€", "MXN"
 
 
 def plain(loc, minor):
-    """An amount with no currency, written the locale's way."""
     if loc["zero_decimal"]:
         return grouped(minor, True)
     if loc["currency"] == "EUR":
@@ -191,8 +157,6 @@ def digits(rng, n):
 
 
 def misread(rng, name):
-    """The logo as OCR reads it: one letter swapped for a look-alike, so the
-    printed name is near the merchant's, never equal to it."""
     swaps = {"i": "a", "I": "A", "o": "a", "O": "D", "e": "c", "E": "F", "l": "I", "L": "I", "a": "o",
              "n": "m", "S": "5", "B": "8", "c": "e"}
     spots = [i for i, ch in enumerate(name) if ch in swaps]
@@ -210,8 +174,6 @@ def reduction_amount(rng, loc, line_total):
 
 
 def render_varied_till(rng, loc, locale, merchant, items_pool, cat_key, when, traits):
-    """One till receipt for a purchase at `merchant`. Returns (content, total
-    in minor units, has_date, has_time, instrument, item names)."""
     T = dict(TEXT[loc["language"]], **LOCALE_TEXT.get(locale, {}))
     L = loc["labels"]
     cur = loc["currency"]
@@ -236,7 +198,6 @@ def render_varied_till(rng, loc, locale, merchant, items_pool, cat_key, when, tr
     def row(label, value):
         lines.extend([label, value] if split else [f"{label}  {value}"])
 
-    # header
     printed = rng.choice(merchant["printed"])
     if rng.random() < 0.12:
         wrong = misread(rng, printed)
@@ -260,7 +221,6 @@ def render_varied_till(rng, loc, locale, merchant, items_pool, cat_key, when, tr
     if has_date and not stamp_in_slip:
         lines.append(f"{stamp_text} {time_text}".strip())
 
-    # items
     many = cat_key in BIG_SHOP and rng.random() < 0.15
     count = rng.randint(8, 20) if many else rng.randint(2, 6)
     picked = [rng.choice(items_pool) for _ in range(count)] if many else \
@@ -347,7 +307,6 @@ def render_varied_till(rng, loc, locale, merchant, items_pool, cat_key, when, tr
         total += tax
         traits.append("tax_added")
 
-    # how the grand total shows, if it does
     total_mode = rng.choices(["printed", "slip_only", "none"], [0.55, 0.2, 0.25])[0]
     if total_mode == "printed":
         totals.append((rng.choice(L["total"]), money(total)))
@@ -356,7 +315,6 @@ def render_varied_till(rng, loc, locale, merchant, items_pool, cat_key, when, tr
     for label, value in totals:
         row(label, value)
 
-    # payment
     blocks = []
     roll = rng.random()
     if total_mode == "printed" and roll < 0.25:
@@ -379,7 +337,6 @@ def render_varied_till(rng, loc, locale, merchant, items_pool, cat_key, when, tr
         elif stamp_in_slip:
             lines.append(f"{stamp_text} {time_text}".strip())
 
-    # lines that carry a number and are not the total
     extras = []
     if savings and rng.random() < 0.6:
         extras.append(pair(rng.choice(T["savings"]), plain(loc, savings), split))

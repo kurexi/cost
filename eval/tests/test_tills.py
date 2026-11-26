@@ -18,9 +18,6 @@ GB_AMOUNT = re.compile(r"(-?)(?:£|GBP )?(\d+\.\d\d)(-?)(?: [AB])?$")
 
 
 def paper_total_gb(content):
-    """Adds up an en-GB varied receipt the way a person would: every signed
-    amount in the item block (up to the first blank line), leaving out the
-    subtotal. Only for receipts with one amount per line and no printed total."""
     block = content.split("\n\n")[0].split("\n")
     total = 0
     for line in block:

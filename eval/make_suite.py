@@ -242,9 +242,6 @@ def long_receipt(rng, locale, case, gold, world=LOCALES):
 
 
 def varied_receipt(rng, locale, case, gold, world=LOCALES):
-    """The same purchase re-rendered by `tills.render_varied_till`: price cuts,
-    quantity lines, VAT tables, card slips, a total printed, on the slip only
-    or nowhere, and the gold record rebuilt from what it printed."""
     loc = world[locale]
     merchant = merchant_entry(locale, gold["merchant"], world)
     if merchant is None:
@@ -396,10 +393,6 @@ def make_memory(rng, profile, records, by_merchant, single_category, work_mercha
 
 
 def make_case(rng, case, user, limit, world=LOCALES, varied=None):
-    """`varied`, when given, is the case's own random stream for
-    `varied_receipt`: a till receipt it picks is re-rendered in a varied
-    layout in place of the one built here. `rng` is drawn from exactly as
-    without it, so every other case comes out as it would have."""
     gold = dict(case["gold"])
     traits = list(case["traits"])
     style = case["style"]
@@ -482,8 +475,6 @@ def fingerprint(cases, users):
 
 
 def varied_stream(seed, case_id, share):
-    """A case's own stream for the varied layouts, so turning them on never
-    moves another case's draws."""
     stream = random.Random(f"variety-{seed}-{case_id}")
     stream.share = share
     return stream
@@ -495,9 +486,7 @@ def build(seed, per_locale, users_per_locale, limit=CONTENT_CHARACTER_LIMIT, nov
     that are invented for them (`novel_names`); 0 draws the real list only, as
     the frozen `dev` and `holdout` suites do. `novel_split` is the half of
     the invented names it draws from: `train` for training data, `eval` for
-    a suite that must hold only names no training suite can contain.
-    `variety` is the share of till receipts re-rendered in the varied layouts
-    of `tills.py`; 0, as every frozen suite was built, leaves them as they are."""
+    a suite that must hold only names no training suite can contain."""
     rng = random.Random(seed)
     profiles, v1_cases, worlds = [], [], {}
     for home in v1.HOME_LOCALES:
