@@ -1,30 +1,4 @@
 #!/usr/bin/env python3
-"""Run the spending agent over a suite, one fresh ledger per case.
-
-    python3 run.py --suite dev --name bonsai-27b --base-url http://127.0.0.1:8090/v1 --model bonsai \\
-        --reasoning-effort none
-    python3 run.py --suite dev --name oracle --backend oracle        # must grade perfect
-    python3 run.py --suite dev --name quick --limit 70 ...           # a balanced prefix
-
-Every case gets its own copy of its user's ledger (records dated after the
-case's today left out), so one case's memory edit can't leak into the next and
-cases can run in any order. The run is resumable: `runs/<name>/results.jsonl`
-gains a line per finished case and a rerun skips them. It refuses to resume
-on a different suite or agent contract, because the results would not be one
-run any more.
-
-Writes, under `runs/<name>/` in the records folder (`$SPENDING_EVAL_RECORDS`,
-or this folder when it is unset):
-- `meta.json`: model, server, settings, suite, contract and agent-code
-  fingerprints, timing;
-- `results.jsonl`: per case, the session's status and settled draft and
-  what it cost (tool calls by name, wasted calls, rounds, compactions,
-  memory edits, tokens, seconds);
-- `transcripts.jsonl`: every session in full — the messages, tool calls and
-  answers — which is the material for distilling a teacher into a student;
-- `grade.json`: the grade, written at the end (see grade.py).
-"""
-
 import argparse
 import concurrent.futures
 import glob
@@ -49,8 +23,6 @@ SETTINGS = ("backend", "model", "base_url", "reasoning_effort", "temperature", "
 
 
 def agent_code_fingerprint():
-    """A hash of the agent's source: a change to what a tool answers changes
-    what the model sees as surely as a change to the instructions does."""
     package = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "spending_agent")
     digest = hashlib.sha256()
     for path in sorted(glob.glob(os.path.join(package, "*.py"))):
@@ -132,7 +104,7 @@ def backend_factory(args):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="dev")
     ap.add_argument("--name", required=True, help="run name; results go to runs/<name>/")
     ap.add_argument("--backend", choices=("openai", "oracle", "silent"), default="openai")

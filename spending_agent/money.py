@@ -1,7 +1,3 @@
-"""Amounts as integer minor units, the app's rule: a port of
-`SpendingParsers.minorUnits(fromDecimalString:currencyCode:)` and
-`decimalString(fromMinorUnits:currencyCode:)`. Nothing else parses amounts."""
-
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 ZERO_DECIMAL_CURRENCIES = frozenset({"JPY", "KRW", "VND", "CLP", "ISK", "UGX", "RWF", "XOF", "XAF"})

@@ -1,28 +1,4 @@
 #!/usr/bin/env python3
-"""The README's charts, drawn from the graded runs as SVG.
-
-    python3 charts.py                 # rewrite every chart in charts/
-
-Each chart is written twice, `<name>-light.svg` and `<name>-dark.svg`, and the
-README shows the one that matches the reader's theme. The numbers come from
-each run's `grade.json` in the records folder (`$SPENDING_EVAL_RECORDS`,
-like board.py), so run `board.py --publish` first when a run has changed.
-Standard library only:
-
-    SPENDING_EVAL_RECORDS=../eval-records python3 charts.py
-
-- `path`: the shipped model's path from Qwen3.5-0.8B as released, through
-  distillation (SFT r3) and reinforcement learning (GRPO r2), to the Q8_0
-  GGUF: records right on `dev` and `dev-novel`, and the wrong records it
-  would file unreviewed.
-- `tools`: tool calls a case on `dev`, split into useful and wasted, for the
-  same steps, the teacher and the 4-bit file.
-- `fields`: each field of the record right on `dev`, for the teacher, the
-  0.8B as released and the shipped file.
-- `languages`: records right on `dev` by the content's language, for the
-  same three.
-"""
-
 import json
 import os
 from xml.sax.saxutils import escape
@@ -33,8 +9,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "charts")
 
 FONT = 'system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif'
-# The validated default categorical palette (slots 1-3), stepped per theme,
-# on GitHub's own page colors.
 THEMES = {
     "light": {"surface": "#ffffff", "ink": "#191919", "ink2": "#666666", "grid": "#e7e7e7", "axis": "#c2c2c2",
               "s1": "#257de0", "s2": "#f47230", "s3": "#00b894"},
@@ -100,7 +74,6 @@ class Svg:
                           f'stroke="{self.t["surface"]}" stroke-width="2"/>')
 
     def bar(self, x, y, w, h, color, round_end=True):
-        """A horizontal bar from x, with a 4px rounded data-end and a square base."""
         if w <= 0:
             return
         r = min(4, w / 2, h / 2) if round_end else 0
@@ -109,7 +82,6 @@ class Svg:
         self.parts.append(f'<path d="{d}" fill="{self.t[color]}"/>')
 
     def legend(self, x, y, items):
-        """items: (label, color, kind) with kind 'dot', 'line' or 'box'."""
         for label, color, kind in items:
             if kind == "line":
                 self.line(x, y - 4, x + 18, y - 4, color=color, width=2)
@@ -206,7 +178,6 @@ def tools_chart(theme):
 
 
 def dot_chart(theme, title, subtitle, rows):
-    """rows: (label, {compared label: value}); one track a row, a dot a model, the shipped value labelled."""
     row_h, top = 32, 108
     svg = Svg(760, top + row_h * len(rows) + 44, theme, title, subtitle)
     left, right = 220, 700

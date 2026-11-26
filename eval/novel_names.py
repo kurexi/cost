@@ -1,25 +1,3 @@
-"""Invented merchants and product names, so a model has to read a receipt
-rather than recognise it.
-
-The receipt generator's merchants are a fixed list of about a hundred real
-shops, each with its own items, and every suite draws from it. A model trained
-on that list can learn "TESCO at the top: merchant Tesco, Groceries" from the
-name alone, and a suite drawn from the same list rewards it for that. Here each
-simulated user gets their own world: with probability `share` a merchant keeps
-its items, prices, category and kind (online or not, mixed or not) under a name
-invented for that user, and each item name is rewritten the same way — a new
-brand, another size or pack, the till's upper case or abbreviations — while the
-word that says what the thing is stays, because that word is what decides the
-category.
-
-Invented merchant names are built from the same stems as invented card and bank
-names (`locales.invented_latin`), so the name alone never says which side of the
-payment it is on: the content's layout has to. Some carry no word for their
-kind, and a few carry another kind's word, so the items decide the category.
-
-A world is a dict like `locales.LOCALES` and is drawn from its own random
-generator, so a suite with `share` 0 draws exactly what it drew before."""
-
 import random
 import re
 import zlib
@@ -103,8 +81,6 @@ def ja_stem(rng):
 
 
 def kind_word(rng, kinds, cat):
-    """The word for the merchant's kind; now and then another kind's, so the
-    name can't be trusted over the items."""
     if rng.random() < 0.05:
         cat = rng.choice(sorted(kinds))
     options = kinds.get(cat)
@@ -130,13 +106,10 @@ def merchant_name(rng, locale, cat):
 
 
 def elided(name):
-    """French contracts "du" before a vowel: "Rail d'Ardbridge", not "Rail du Ardbridge"."""
     return re.sub(r"\bdu ([AEIOUYaeiouy])", r"d'\1", name)
 
 
 def printed_forms(rng, locale, name):
-    """How tills print the name: as written, in capitals, with the legal form
-    or the branch."""
     language = LOCALES[locale]["language"]
     if language == "zh":
         return [name, f"{name}（{rng.choice(ZH_BRANCH)}店）"]
@@ -165,8 +138,6 @@ def abbreviated(word):
 
 
 def item_name(rng, locale, name):
-    """A product name as another brand, size and till would print it, still
-    saying what the product is."""
     language = LOCALES[locale]["language"]
     original = name
     if rng.random() < 0.6:
@@ -191,14 +162,10 @@ ATTEMPTS = 500
 
 
 def in_split(text, split):
-    """Whether an invented string belongs to a split. Invented names are cut
-    in two halves by a hash of their folded form, train and eval, so an eval
-    suite's names can never have been drawn for training."""
     return zlib.crc32(text.casefold().encode("utf-8")) % len(SPLITS) == SPLITS.index(split)
 
 
 def real_names(locales):
-    """Every real merchant and item name, folded: an invented name is never one."""
     names = set()
     for loc in locales.values():
         for merchant in loc["merchants"]:
@@ -228,9 +195,6 @@ def rewritten_items(rng, locale, items, share, split, taken):
 
 
 def world(rng, share, split="train", locales=LOCALES):
-    """Every locale with its merchants renamed for one user, `share` of them
-    invented; the rest keep their real names. Real or invented, item names are
-    rewritten with the same probability, always into a name the original isn't."""
     out, real = {}, real_names(locales)
     for code, loc in locales.items():
         used = set(real)
@@ -252,7 +216,6 @@ def world(rng, share, split="train", locales=LOCALES):
 
 
 def world_for(seed, home, index, share, split="train"):
-    """The world of one simulated user, from its own generator."""
     if share <= 0:
         return LOCALES
     return world(random.Random(f"names-{seed}-{home}-{index}"), share, split)

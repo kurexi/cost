@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-"""Merge a LoRA adapter from train_sft.py into a copy of its base checkpoint.
-
-    python3 merge_lora.py --base /path/to/Qwen3.5-0.8B --adapter sft/student-sft \\
-        --out /path/to/student-sft-merged
-
-The trainer loads Qwen3.5 as `Qwen3_5ForCausalLM`, the text model alone,
-whose weights are named `model.layers.…`; the checkpoint is
-`Qwen3_5ForConditionalGeneration`, named `model.language_model.layers.…`,
-with the vision tower and the MTP head beside it, and that layout is the one
-llama.cpp's converter reads. So the merge doesn't save the trained model:
-it copies the base folder file for file and adds each adapter's
-`B·A·alpha/r` to the one checkpoint weight it adapts, found by its path
-from `layers.` on, in float32 and stored back in the weight's own dtype.
-Every other tensor is copied untouched, and an adapter weight that matches
-no checkpoint weight, or more than one, stops the merge.
-"""
-
 import argparse
 import json
 import os
@@ -27,7 +10,6 @@ NOT_THE_TEXT_MODEL = ("visual", "mtp")
 
 
 def adapted_modules(adapter_keys):
-    """{module path: (lora_A key, lora_B key)} from an adapter's tensor names."""
     modules = {}
     for name in adapter_keys:
         for side in ("lora_A", "lora_B"):
@@ -44,8 +26,6 @@ def adapted_modules(adapter_keys):
 
 
 def checkpoint_key(module, checkpoint_keys):
-    """The checkpoint weight a trained module adapts: the text model's weight
-    with the same path from `layers.` on."""
     if "layers." not in module:
         raise SystemExit(f"{module} is not inside a decoder layer; this merge only maps layer weights")
     suffix = "layers." + module.split("layers.", 1)[1] + ".weight"
@@ -128,7 +108,7 @@ def merge(base, adapter, out):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--base", required=True, help="the base model's Hugging Face folder")
     ap.add_argument("--adapter", required=True, help="the folder train_sft.py saved")
     ap.add_argument("--out", required=True, help="the merged model's folder (replaced if it exists)")

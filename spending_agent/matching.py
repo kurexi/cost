@@ -1,12 +1,3 @@
-"""The one fuzzy matcher every query tool uses.
-
-Text is folded the way the app folds OCR text (typographic quotes and dashes,
-width, accents), then compared on letters and digits only. A candidate scores
-by the first rule that holds, strongest first: the same name, one name a
-prefix of the other (the printed "TESCO STORES 3297" and the recorded
-"Tesco"), shared words, a near-miss spelling. A short name ("M&S", "BP")
-matches only as a whole word, never as part of one."""
-
 import re
 import unicodedata
 
@@ -57,7 +48,6 @@ def edit_distance(a, b):
 
 
 def singular(word):
-    """A light English singular, enough that "grocery" finds "Groceries"."""
     if len(word) > 4 and word.endswith("ies"):
         return word[:-3] + "y"
     if len(word) > 4 and word.endswith(("ses", "xes", "ches", "shes")):
@@ -110,7 +100,6 @@ def matches(pattern, candidate, threshold=MATCH_THRESHOLD):
 
 
 def rank(pattern, candidates, limit=None, threshold=MATCH_THRESHOLD):
-    """Candidates scoring at least `threshold`, best first, ties by name."""
     scored = [(candidate, score(pattern, candidate)) for candidate in candidates]
     kept = sorted(((c, s) for c, s in scored if s >= threshold), key=lambda pair: (-pair[1], key(pair[0])))
     return kept[:limit] if limit else kept

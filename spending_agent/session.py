@@ -1,18 +1,3 @@
-"""One session: the spending agent working on one piece of content.
-
-The loop is `LocalModelClient.complete`'s: tool rounds while the model asks
-for tools, then one structured answer. Everything around it is a hook, the
-way LangChain's agent middleware works:
-
-    on_start      before anything is sent (content over budget is rejected)
-    before_model  before every model call (compaction)
-    after_model   after every model call
-    after_tools   after every round of tool calls (a spent budget ends the phase)
-
-No session ends without a row in review.csv and a transcript: a rejected,
-failed or undecodable session parks there with its reason, so nothing the
-user shared is lost."""
-
 import re
 import json
 import uuid
@@ -143,7 +128,6 @@ def _strip_thinking(message):
 
 
 def _exchanges(messages):
-    """(start, end) of each assistant tool-call turn with the tool answers after it."""
     spans, index = [], 0
     while index < len(messages):
         message = messages[index]
@@ -179,9 +163,6 @@ def _bounded(lines):
 
 
 def compact(messages, budget):
-    """Never send earlier reasoning back; past the budget, replace the oldest
-    tool exchanges (never the latest) with a bounded summary of what their
-    tools answered. Deterministic: no model is asked to summarise."""
     messages = [_strip_thinking(m) for m in messages]
     while conversation_size(messages) > budget:
         spans = _exchanges(messages)
@@ -260,8 +241,6 @@ def _canonical(name, names):
 
 
 def settle(draft, snapshot):
-    """Snap names onto the user's own spelling; a category or tag that isn't
-    theirs becomes a proposal, never a new category or tag."""
     if draft.category:
         canonical = _canonical(draft.category, snapshot.categories)
         if canonical:
@@ -340,9 +319,6 @@ WHITESPACE_RUNAWAY = re.compile(r"\s{200,}")
 
 
 def unreadable_answer_reason(content):
-    """Why an answer didn't decode. A long run of whitespace is the grammar's
-    signature: the model wanted a token the schema forbade, and whitespace was
-    the only thing left to write until the token limit."""
     runaway = WHITESPACE_RUNAWAY.search(content)
     if runaway:
         before = content[:runaway.start()].rstrip()[-40:]

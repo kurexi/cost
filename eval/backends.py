@@ -1,9 +1,3 @@
-"""Reference backends that check the harness rather than a model.
-
-`OracleBackend` answers every case with its gold record, so a run with it
-must grade perfect: anything less is a bug in the suite, the session or the
-grader. `SilentBackend` never answers with JSON, so it is the floor."""
-
 import json
 
 

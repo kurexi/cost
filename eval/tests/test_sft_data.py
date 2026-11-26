@@ -43,9 +43,6 @@ SCRIPT = [
 
 
 class FakeServer(ChatBackend):
-    """The real client, with the network replaced: every body it would send
-    is recorded, tool rounds follow the script, and the answer formats in
-    `refuses` are refused the way a server refuses them."""
 
     def __init__(self, script, refuses=()):
         super().__init__("http://fake/v1", "qwen", reasoning_effort="none", one_request_at_a_time=False)
@@ -87,7 +84,6 @@ def run_scripted(budget=16000, refuses=(), script=SCRIPT):
 
 
 def sent(server):
-    """The bodies the server accepted: refused answer formats are dropped."""
     answers = [i for i, b in enumerate(server.bodies) if "tools" not in b]
     return [b for i, b in enumerate(server.bodies) if "tools" in b or i == answers[-1]]
 

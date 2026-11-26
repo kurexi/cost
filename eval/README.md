@@ -8,6 +8,7 @@ gap to its teacher. Standard library only.
 ```
 make_suite.py   generates a suite: cases (content + gold record) and simulated users (ledger, tags, memory)
 receipts.py     the receipt generator under it: multilingual content with gold records; locales.py holds its per-language data
+tills.py        varied till layouts (price cuts, quantity lines, VAT tables, card slips, totals printed or not), --variety
 suite.py        loads a suite; turns a user into a fresh ledger folder for one case
 run.py          runs the agent on a suite against any OpenAI-compatible server; resumable
 grade.py        field-level grading of the settled drafts, breakdowns, safety, the RL reward
@@ -25,7 +26,7 @@ merge_lora.py   merges a train_sft.py adapter into a copy of the base checkpoint
 sft_a100.ipynb  one round of distillation on Colab: teacher on train (A100, first round only), pairs, SFT, merge, optional bf16 score
 train_grpo.py   GRPO from an SFT adapter: whole sessions of the real loop, sampled in-process and graded with the reward
 grpo.ipynb      GRPO on Colab (A100 or L4): train-rl suite, train_grpo.py, pick a kept step on val-rl, merge, bf16 score
-suites/         dev (280 cases), dev-novel (280, invented merchants and items) and holdout (140), committed and frozen
+suites/         dev (280 cases), dev-novel (280, invented merchants and items), dev-varied (280, varied tills) and holdout (140), committed and frozen
 novel_names.py  invents merchants and item names per simulated user, from two disjoint halves (train, eval)
 runs/           one folder per run: meta, results, transcripts, grade (in the records folder)
 ```
@@ -106,6 +107,31 @@ by it on any suite.
 end of a distillation round. Never run it while tuning, so a gain on `dev`
 can be confirmed on cases nobody has looked at.
 
+**Receipts as tills really print them: `dev-varied`.** `render_till` prints
+a tidy receipt: items, perhaps a subtotal and tax, a total, a payment line.
+Real tills print price cuts as negative lines under the item, quantity lines
+("2 x 1.15"), product codes and VAT letters beside prices, a "TOTAL
+DISCOUNT" or "YOU SAVED" line that is not the total, a per-rate VAT table,
+and a card slip whose amount can be blank or masked. A folded or cut-off
+receipt, or a photo with the amount hidden, has no total at all, so the
+record has to be added up from the lines. `tills.py` re-renders a share of
+the till receipts (`--variety`, 0 to 1) in those layouts. The gold total is
+what a person adds up from the paper: the items, minus every reduction and
+coupon, plus every bag or deposit charge (and tax where it is added at the
+till). Each shape has a trait (`varied_till`, `reduction_line`,
+`quantity_line`, `savings_line`, `count_line`, `vat_table`, `card_slip`,
+`charge_line`, `coupon_line`, `product_code`, `logo_misread`, with
+`no_printed_total` where no total is printed). The varied receipts draw from
+their own random stream, so a suite built with `--variety` differs from the
+same suite without it only in those receipts. `dev-varied` holds only names
+no training suite can contain:
+
+```bash
+python3 make_suite.py --name dev-varied --per-locale 40 --users-per-locale 2 --seed 41 --novel-share 1.0 --novel-split eval --variety 1.0
+```
+
+That is 280 cases, 120 of them varied tills, fingerprint `fcd74d1dc02fb19d`.
+
 For training data, generate a separate split with a different seed, many
 users (so each invented shop occurs about once), and half of each user's
 merchants and items invented (so real brands stay known):
@@ -115,7 +141,13 @@ python3 make_suite.py --name train --per-locale 300 --users-per-locale 30 --seed
 ```
 
 That is 2,100 cases for 210 users, fingerprint `a5437ef135b8f48f`.
-`suites/train*` is git-ignored.
+`suites/train*` is git-ignored. For a round that should also read varied
+tills, add `--variety` with a new name and seed, for example
+`make_suite.py --name train-3 --per-locale 300 --users-per-locale 30 --seed 5 --novel-share 0.5 --variety 0.6`
+(2,100 cases, 501 of them varied tills, fingerprint `51a9e46d4d120057`), and an
+RL split the same way (`--name train-rl-2 --per-locale 100 --users-per-locale 10
+--seed 6 --novel-share 0.5 --variety 0.6`: 700 cases, 205 varied, fingerprint
+`b86de03ecc846bca`).
 
 ## Running a baseline
 

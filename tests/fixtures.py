@@ -1,5 +1,3 @@
-"""Shared fixtures: a ledger in a temporary folder and a scripted model server."""
-
 import json
 import tempfile
 
@@ -50,7 +48,6 @@ def answer_text(**fields):
 
 
 class ScriptedBackend:
-    """Replays tool-round replies in order, then the answer; records every request."""
 
     def __init__(self, tool_replies=(), answer=None, fail_with=None):
         self.tool_replies = list(tool_replies)

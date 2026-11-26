@@ -1,24 +1,4 @@
 #!/usr/bin/env python3
-"""The leaderboard: every graded run on a suite, as a Markdown table.
-
-    python3 board.py                  # every evaluation suite, printed
-    python3 board.py --write          # also rewrite the tables in the records' RESULTS.md
-    python3 board.py --publish        # rewrite BENCHMARK.md and the evidence in ../README.md
-    python3 board.py --suite dev      # one suite
-
-Runs on an older suite fingerprint are listed separately: their numbers are
-not comparable with the current ones. The reference runs (names starting
-`oracle` or `silent`) are left out unless --all is given.
-
-BENCHMARK.md, beside this script, is the one that ships with the code: its
-tables leave out what only says where and how a run was served (the served
-model's alias, the seconds a case on whichever GPU it had) and add the size
-of the GGUF a quantized run served, from its `server.json`. The agent's
-README gets the short version: `HEADLINE`, the teacher against the 0.8B
-before and after training, the shipped file and the smaller 4-bit one, as a
-chart and a table.
-"""
-
 import argparse
 import json
 import os
@@ -90,7 +70,6 @@ def graded_summary(run):
 
 
 def headline_section(rows):
-    """rows: (label, weights, dev summary, dev-novel summary or None)."""
     labels = ", ".join(f'"{label}"' for label, *_ in rows)
     bars = ", ".join(f"{dev['overall']['record_core']:.3f}" for *_, dev, _ in rows)
     chart = ["```mermaid", "xychart-beta", '    title "Records right on dev (record_core)"',
@@ -127,7 +106,7 @@ def contracts_line(entries):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--suite", nargs="+", default=list(BOARD_SUITES),
                     help="the suites to list, each in its own table (default: every evaluation suite)")
     ap.add_argument("--all", action="store_true", help="include the oracle and silent reference runs")

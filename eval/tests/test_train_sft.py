@@ -12,8 +12,6 @@ def has(*modules):
 
 @unittest.skipUnless(has("torch", "transformers", "peft"), "needs torch, transformers, peft")
 class LossWeightTests(unittest.TestCase):
-    """A stop is one token and a further tool call is 25; how the two
-    decisions are weighed is what these pin."""
 
     def setUp(self):
         import train_sft
@@ -41,7 +39,6 @@ class LossWeightTests(unittest.TestCase):
 
 
 class CharTokenizer:
-    """One token per character, with offsets, the way a fast tokenizer reports them."""
 
     def __call__(self, text, add_special_tokens=False, return_offsets_mapping=False):
         encoded = {"input_ids": [ord(c) % 90 + 1 for c in text]}
@@ -52,8 +49,6 @@ class CharTokenizer:
 
 @unittest.skipUnless(has("torch", "transformers", "peft"), "needs torch, transformers, peft")
 class SpanTests(unittest.TestCase):
-    """A `doubt` pair teaches its confidence number and nothing else of its
-    answer."""
 
     def setUp(self):
         import json

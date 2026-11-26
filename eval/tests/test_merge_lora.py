@@ -68,8 +68,6 @@ def has(*modules):
 
 @unittest.skipUnless(has("torch", "transformers", "peft", "safetensors"), "needs torch, transformers, peft")
 class MergeMatchesPeftTests(unittest.TestCase):
-    """A tiny Qwen3.5 trained the way train_sft.py trains: the merged copy of
-    the checkpoint must load to the same weights as peft's own merge."""
 
     def test_merged_checkpoint_equals_peft_merge(self):
         import torch

@@ -1,10 +1,3 @@
-"""The tool budget, a port of `AgentToolBudgetState` widened to the v2 tools.
-
-Each tool has its own limit and every call counts towards a ceiling for the
-session. A repeated query is answered from the cache with a note that it
-reveals nothing new. Past a limit a call is refused; the second refusal
-spends the budget, and the loop then ends the tool phase."""
-
 from . import matching
 from .tools import ToolAnswer
 
@@ -60,9 +53,6 @@ class ToolBudget:
         return slot, tuple(parts)
 
     def refund(self, slot):
-        """An edit the memory rules refused (too long, passage not found) is
-        not an edit: the agent keeps its chance to make a valid one. The call
-        still counts towards the session's ceiling, so retries stay bounded."""
         self.used[slot] = max(0, self.used[slot] - 1)
 
     def call(self, slot, arguments, run, description):

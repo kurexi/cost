@@ -1,12 +1,3 @@
-"""Pins the Python environment to the app's behaviour.
-
-The cases mirror the Swift tests in `cost 2Tests/` (AgentToolBudgetTests,
-LedgerSearchTests and the ReceiptTextSearch / ReceiptCalculator suites), so a
-behaviour change on one side shows up as a failure on the other.
-
-    python3 -m unittest discover -s tests
-"""
-
 import os
 import sys
 import unittest
@@ -54,7 +45,6 @@ def _gym(month, printed=""):
 
 
 def sample_ledger():
-    """The ledger `LedgerSearchTests.swift` uses."""
     return [
         _gym(7), _gym(8), _gym(9),
         _gym(10, printed="WWW.HBRSD.AC.UK\nHARBOURSIDE GB\n£ 27.99"),
@@ -68,7 +58,6 @@ def sample_ledger():
 
 
 class LedgerSearchTests(unittest.TestCase):
-    """Mirrors `LedgerSearchTests.swift`, on the same ledger."""
 
     LEDGER = None
 

@@ -1,58 +1,4 @@
 #!/usr/bin/env python3
-"""Grade a run of the spending agent against its suite's gold records.
-
-    python3 grade.py bonsai-27b                 # runs/bonsai-27b/results.jsonl
-    python3 grade.py runs/bonsai-27b --suite dev
-
-What is graded is the draft the session settled — the row that reaches the
-user's review queue — not the model's raw text, so the session's own fixes
-(snapping a category onto the user's spelling, turning an unknown one into a
-proposal) count the way they count in the app.
-
-Per case (1 = right, 0 = wrong; all deterministic, no model in the loop):
-
-- answered: the session produced a draft (not failed);
-- status: the session ended as the suite expects (needs_review,
-  not_spending, rejected_too_long);
-- is_spending, amount (minor units), currency, time;
-- date: the date the record gets, so when nothing gives one, an empty
-  date and the arrival date (the case's today, which the app falls back
-  to) are both right;
-- merchant: folded comparison against every accepted spelling, containment
-  either way, never equal to the payment instrument;
-- instrument: exact where the content names one, empty where it shows
-  none, free where it is cash or a bare card scheme;
-- category: one of the accepted titles; where the user has no fitting
-  category, an empty slot and a proposal (`proposal_wording` says whether
-  the proposal is one of the reasonable titles). For goods with no
-  category of their own (clothing, home, pets, kids), the user's broad
-  Shopping category is also right, when they have one;
-- tags: the user's tags the purchase belongs under, as a set. A trip tag on
-  a purchase after the trip's last tagged record may be left off, since
-  nothing in the content says whether the trip is still going;
-- proposed_tag: empty unless the case allows one (a trip abroad with no tag
-  yet), and never a restatement of an existing tag;
-- note_items: the share of the gold items the note names.
-
-`record_core` = is_spending, amount, currency, merchant, category.
-`record_all` adds date, time, instrument, tags and proposed_tag.
-`reward` is the scalar for RL: field-weighted, -1 for no draft, -0.03 per
-wasted tool call, +0.05 for a fully right record. A draft the app would
-approve on its own adds +0.05 when it is fully right and -0.45 when it
-isn't, so a confidence of 0.8 or more pays only where the draft is right
-at least 9 times in 10 (`APPROVAL_PRECISION`). Without the bonus the cheapest
-policy would be to never sound confident; without the penalty, to always.
-
-Safety: `false_approval` is the share of cases the app would have approved
-on its own (a spending draft with an existing category and confidence >=
-0.8) while the record was wrong — the number the audits must drive to zero.
-`right_approval` is the share it would have approved and got right.
-
-Content over the budget is rejected before any model call, the same way for
-every model, so those cases are counted under `rejected_ok` and kept out of
-the field scores.
-"""
-
 import argparse
 import json
 import os
@@ -101,8 +47,6 @@ GOODS_A_SHOPPING_CATEGORY_COVERS = ("clothing", "home", "pets", "kids")
 
 
 def broad_category_alternative(gold, user):
-    """The user's Shopping title, when the gold wants a new category for
-    goods that a broad Shopping category also covers; else None."""
     titles = CATEGORY_TITLES.get(user["language"], {})
     kind = next((k for k, title in titles.items() if title == gold["proposedCategory"]), None)
     shopping = titles.get("shopping")
@@ -112,13 +56,10 @@ def broad_category_alternative(gold, user):
 
 
 def record_date(value, case):
-    """The date the record gets: the one given, else the day it arrived."""
     return value or case["today"]
 
 
 def optional_tags(case, user):
-    """Trip tags on a purchase after the trip's last tagged record (up to
-    the case's today): tagging and not tagging are both right."""
     day = record_date(case["gold"]["purchaseDate"], case)
     optional = set()
     for tag in case["gold"]["tags"]:
@@ -138,7 +79,6 @@ def tags_right(draft_tags, case, user):
 
 
 def score_case(case, result, user):
-    """Per-field scores for one case, or None for a case rejected by design."""
     gold, draft = case["gold"], result.get("draft")
     if case["expectedStatus"] == "rejected_too_long":
         return None
@@ -211,9 +151,6 @@ def reward(scores, result):
 
 
 def approval_term(scores):
-    """The part of the reward that auto-approval decides: the bonus for a
-    right draft confident enough to be approved, the penalty for a wrong
-    one, nothing for a draft left to review."""
     if scores is None or not scores["answered"] or not scores["would_approve"]:
         return 0.0
     return RIGHT_APPROVAL_BONUS if scores["record_all"] else -FALSE_APPROVAL_PENALTY
@@ -357,7 +294,7 @@ def grade_run(name_or_path, suite=None):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("run", help="run name under runs/, or a run folder")
     ap.add_argument("--suite", help="suite name or folder (default: the one the run recorded)")
     args = ap.parse_args()

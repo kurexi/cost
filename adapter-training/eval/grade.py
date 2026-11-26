@@ -1,35 +1,4 @@
 #!/usr/bin/env python3
-"""Grade extraction outputs against the gold records — and the RL reward.
-
-    python3 grade.py --gold data/eval.jsonl --pred runs/<name>/predictions.jsonl
-
-A prediction line is {"id": ..., "output": <raw model text or an object>} (and
-anything else; it is ignored). Raw text is decoded the way `LocalModelAgent`
-decodes a local server's reply: the first JSON object in it, with lenient
-types — a model that types `"isSpending": "true"` or `12.34` for "12.34" is
-not failed for it, because the app wouldn't fail it either.
-
-Fields are judged like this (all deterministic, no model in the loop):
-
-- amount: the value in minor units must equal the gold total; `amount_strict`
-  also asks for the exact gold string ("12.34", "1280").
-- merchant: folded comparison against every accepted spelling (the printed
-  one, the brand, a known alias); a containment either way passes, so
-  "TESCO EXPRESS" for Tesco is right — but a name equal to the payment
-  instrument never is.
-- paymentInstrument: graded only where the content names one ("exact"); must
-  be empty where nothing paid is shown ("none"); free where it is a bare
-  scheme or cash ("either").
-- category: exact title when the user has the category; when they don't, the
-  category slot must be empty and a proposal made (`proposal_wording` says
-  whether its title was one of the reasonable ones).
-- date, time: exact; empty when the gold is empty (never invent a date).
-
-`record_core` = spending verdict + amount + currency + merchant + category;
-`record_all` adds date, time and instrument. `reward()` is the scalar used by
-train_grpo.py.
-"""
-
 import argparse
 import json
 import re
@@ -95,8 +64,6 @@ def as_bool(v, default=True):
 
 
 def parse_minor(text, currency):
-    """Lenient amount reader for grading: '12.34', '12,34', '€12.34',
-    '1,234.56', '1.234,56', 12.34. Returns None when nothing numeric."""
     s = re.sub(r"[^\d.,\-]", "", as_str(text))
     if not re.search(r"\d", s):
         return None
@@ -194,12 +161,6 @@ REWARD_WEIGHTS = {"is_spending": 0.10, "amount": 0.30, "currency": 0.10, "mercha
 
 
 def reward(gold, output, trail=None):
-    """Scalar reward in [-1, 1.05]: field-weighted correctness against the
-    gold labels; -1 for an answer the app couldn't decode at all; a small
-    penalty for tool calls that burned budget for nothing (unknown tools,
-    refusals, repeats) and a small bonus for a fully correct record. The app's
-    own audits are *not* the reward — they are necessary, not sufficient, and
-    a policy rewarded on them learns to copy any plausible number."""
     s, _ = score(gold, output)
     if not s["json_valid"]:
         return -1.0, s
@@ -262,7 +223,7 @@ def print_table(summary, columns=("record_core", "record_all", "amount", "curren
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--gold", required=True)
     ap.add_argument("--pred", required=True)
     ap.add_argument("--out", help="write the summary JSON here")

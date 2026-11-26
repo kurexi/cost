@@ -1,5 +1,3 @@
-"""Small helpers shared by the generator, the environment and the grader."""
-
 import json
 import os
 import sys

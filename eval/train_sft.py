@@ -1,36 +1,4 @@
 #!/usr/bin/env python3
-"""LoRA supervised fine-tuning on the target trajectories from sft_data.py.
-
-Loss is on completions only (tool calls, the end of the tool phase, and
-the JSON answer). `--loss` says how it is averaged:
-
-- `sequence` (the default): per sequence and then over the batch, so a
-  12-token "no tools needed" decision weighs as much as a 300-token answer:
-  whether to call a tool is the behaviour the base model gets most wrong,
-  and token-averaging would drown it.
-- `token`: over every completion token in the batch. Per-sequence averaging
-  is biased wherever one decision has a short completion and the other a
-  long one. The agent ends its tool phase with a bare `<|im_end|>`, so a
-  stop puts its whole weight on the one token that decides it, while a
-  further tool call spreads its weight over 25 or more tokens, and a student
-  trained per sequence learns to stop after its first tool round. Averaged
-  over tokens, the token that decides to stop and the token that decides to
-  go on weigh the same, so the student learns how often the teacher went on.
-
-A pair with `train_spans` (the `doubt` pairs: a wrong draft whose confidence
-was set low) is trained on the tokens that overlap those character spans of
-its completion only; the rest of the completion is context, like the prompt.
-
-LoRA goes on every linear projection of both layer kinds — the full-attention
-layers (q/k/v/o) and the Gated DeltaNet layers (in_proj_qkv/z/a/b, out_proj)
-— and the MLPs.
-
-    python3 train_sft.py --model /path/to/Qwen3.5-0.8B --data sft.jsonl \
-        --out adapters/sft --epochs 1 --accum 8 --lr 2e-4
-
-Runs on CPU (slowly) or GPU; nothing here is device-specific beyond --device.
-"""
-
 import argparse
 import json
 import math
@@ -43,9 +11,6 @@ from peft import LoraConfig, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def pick_dtype(device, requested="auto"):
-    """bf16 where autocast is dependable (CUDA, CPU); float32 on Apple's
-    `mps`, whose bf16 autocast support depends on the torch and macOS
-    versions — and memory is not what limits a 0.8–2B model there."""
     if requested != "auto":
         return getattr(torch, requested)
     if str(device).startswith("mps"):
@@ -56,13 +21,10 @@ def pick_dtype(device, requested="auto"):
 
 
 def grad_scaler(device, dtype):
-    """Loss scaling for float16, whose narrow range lets small gradients
-    underflow to zero; a disabled no-op for bf16 and float32."""
     return torch.amp.GradScaler(str(device).split(":")[0], enabled=dtype == torch.float16)
 
 
 def precision(device, dtype):
-    """Autocast for reduced precision, nothing for float32."""
     import contextlib
     if dtype == torch.float32:
         return contextlib.nullcontext()
@@ -92,8 +54,6 @@ def load_sequences(tok, path, max_len, kinds=None, end_tools_fraction=1.0, rng=r
 
 
 def completion_targets(tok, pair):
-    """The completion's token ids, and for each whether it is a target:
-    all of them, or with `train_spans` those overlapping a span."""
     spans = pair.get("train_spans")
     if not spans:
         ids = tok(pair["completion"], add_special_tokens=False)["input_ids"]
@@ -107,10 +67,6 @@ def completion_targets(tok, pair):
 
 
 def completion_nll(model, seq, device):
-    """Summed NLL of the completion and its token count. Logits are computed
-    for the completion positions only (`logits_to_keep`): over a 248k-token
-    vocabulary, full logits for a 3k-token sequence are ~3 GB in fp32 before
-    the softmax."""
     ids = torch.tensor([seq["input_ids"]], device=device)
     n_completion = completion_length(seq)
     tail = scored_tail(seq)
@@ -127,8 +83,6 @@ def completion_length(seq):
 
 
 def scored_tail(seq):
-    """How many positions from the first target token to the end: logits
-    are kept for those, since targets need not be the trailing tokens."""
     first = next((i for i, x in enumerate(seq["labels"]) if x != -100), len(seq["labels"]) - 1)
     return len(seq["labels"]) - first
 
@@ -137,8 +91,6 @@ LOSS_MODES = ("sequence", "token")
 
 
 def loss_weights(completion_lengths, mode):
-    """What each sequence's summed completion NLL is multiplied by, so the
-    batch's loss is the mean per sequence or the mean per token."""
     if mode == "sequence":
         return [1 / (n * len(completion_lengths)) for n in completion_lengths]
     if mode == "token":
@@ -147,7 +99,7 @@ def loss_weights(completion_lengths, mode):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", required=True)

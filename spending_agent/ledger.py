@@ -1,14 +1,3 @@
-"""The user's ledger: a folder of CSV files, read fresh on every access.
-
-    records.csv          the spending records
-    categories.csv       the user's categories (title)
-    tags.csv             the user's tags (name, note)
-    review.csv           drafts waiting for the user
-    memory.txt           the agent's memory
-    memory_history.csv   every version of the memory, with the session that wrote it
-    sessions/<id>.json   one session's full transcript
-"""
-
 import csv
 import json
 import os
@@ -79,7 +68,6 @@ class Record:
 
 @dataclass
 class Snapshot:
-    """What the tools read during one session, taken before it starts."""
     records: list
     categories: list
     tags: list
