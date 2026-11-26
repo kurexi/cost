@@ -26,6 +26,8 @@ merge_lora.py   merges a train_sft.py adapter into a copy of the base checkpoint
 sft_a100.ipynb  one round of distillation on Colab: teacher on train (A100, first round only), pairs, SFT, merge, optional bf16 score
 train_grpo.py   GRPO from an SFT adapter: whole sessions of the real loop, sampled in-process and graded with the reward
 grpo.ipynb      GRPO on Colab (A100 or L4): train-rl suite, train_grpo.py, pick a kept step on val-rl, merge, bf16 score
+real_receipts.py turns a downloaded receipt dataset (OCR text or images, with labelled merchant, total and date) into a train suite and an eval suite
+real_receipts_sft.ipynb an SFT round with real receipts from Kaggle: your Kaggle key at run time, convert, teacher, pairs, SFT, merge, score on dev-receipts
 suites/         dev (280 cases), dev-novel (280, invented merchants and items), dev-varied (280, varied tills) and holdout (140), committed and frozen
 novel_names.py  invents merchants and item names per simulated user, from two disjoint halves (train, eval)
 runs/           one folder per run: meta, results, transcripts, grade (in the records folder)
@@ -337,6 +339,52 @@ The wrong fields are never trained on. Under the per-token loss the
 confidence number weighs the same in a right answer and a doubt pair, so
 the student is taught the confidence in proportion to how often drafts like
 this one were right.
+
+## Real receipts
+
+The generated suites can only hold layouts someone thought to generate.
+`real_receipts.py` turns a real receipt dataset into suites the same
+harness runs:
+
+```bash
+python3 real_receipts.py --source ~/data/receipts --dataset <owner>/<name> --train-name train-receipts --eval-name dev-receipts
+```
+
+It reads SROIE-style OCR box files with `key` labels, CORD-style JSON, CSV,
+Pascal VOC XML and COCO JSON. Where there are only images and boxes,
+`--ocr` reads them with tesseract. Each receipt with a merchant, a total
+and a date becomes one till case:
+- The gold is the dataset's labels.
+- The currency comes from the receipt's markers (`RM`, `€`, `$`, ...), or
+  from `--currency` where it prints none.
+- The time is the one printed time, if there is one.
+- The user around the case has the receipt's currency and a ledger built
+  from other receipts in the same split.
+- In `--known-share` of the cases (0.7) the user has filed the merchant
+  before, which decides the category. The other cases need the category
+  read from the receipt, so they are kept only where keyword rules on the
+  merchant's name or text are sure of it.
+- A receipt is dropped, and counted, when its labelled total isn't printed
+  in its text, its date can't be read, it prints several different times,
+  or its text repeats another receipt's.
+- The split is by a hash of the text: `--eval-share` (0.15) goes to the eval
+  suite and the rest to the train suite, so no receipt is in both. Each
+  train receipt goes to `--train-copies` users (2).
+
+The train suite's name must start with `train` and the eval suite's must
+not, so only the train suite can be trained on. Both are git-ignored,
+because the dataset's licence decides what may be published.
+
+`real_receipts_sft.ipynb` runs a whole round on Colab with
+[dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2):
+1. It downloads the dataset with your Kaggle key, read from Colab's secrets
+   or typed into a hidden prompt and passed only to the `kaggle` command.
+2. It prints what the dataset holds, converts it, and shows a few cases
+   with their gold.
+3. The teacher runs on `train-receipts` beside the generated train suites,
+   and the student is trained as in `sft_a100.ipynb`.
+4. The student is scored on `dev`, `dev-novel` and `dev-receipts`, against
+   the shipped model and the teacher.
 
 ## GRPO
 
