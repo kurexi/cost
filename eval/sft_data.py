@@ -72,7 +72,7 @@ from spending_agent import draft as contract
 from spending_agent.backend import answer_ladder, tool_calls_of, without_thinking
 from spending_agent.session import _assistant_turn, compact
 
-FROZEN_SUITES = ("dev", "dev-novel", "holdout")
+FROZEN_SUITES = ("dev", "dev-novel", "dev-varied", "holdout")
 END_OF_TURN = "<|im_end|>"
 CONFIDENCE = re.compile(r'("confidence"\s*:\s*)(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)')
 

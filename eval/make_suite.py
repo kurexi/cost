@@ -38,6 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..")))
 
 import receipts as v1
+import tills
 from locales import CATEGORY_TITLES, LOCALES, instrument_name
 from novel_names import world_for
 
@@ -240,6 +241,34 @@ def long_receipt(rng, locale, case, gold, world=LOCALES):
     return content, traits + ["many_items"]
 
 
+def varied_receipt(rng, locale, case, gold, world=LOCALES):
+    """The same purchase re-rendered by `tills.render_varied_till`: price cuts,
+    quantity lines, VAT tables, card slips, a total printed, on the slip only
+    or nowhere, and the gold record rebuilt from what it printed."""
+    loc = world[locale]
+    merchant = merchant_entry(locale, gold["merchant"], world)
+    if merchant is None:
+        return None
+    secondary = "secondary_kind" in case["traits"] and merchant["mixed"]
+    cat_key, pool = merchant["mixed"] if secondary else (merchant["cat"], merchant["items"])
+    day = date.fromisoformat(gold["purchaseDate"]) if gold["purchaseDate"] else \
+        date.fromisoformat(case["today"]) - timedelta(days=rng.randint(0, 10))
+    when = datetime(day.year, day.month, day.day, rng.randint(8, 21), rng.randint(0, 59))
+    traits = [t for t in case["traits"] if t in ("travel", "mixed_merchant", "secondary_kind", "needs_proposal",
+                                                 "invented_merchant")]
+    content, total, has_date, has_time, instrument, names = tills.render_varied_till(
+        rng, loc, locale, merchant, pool, cat_key, when, traits)
+    gold.update({
+        "paymentInstrument": instrument["gold"] if instrument["mode"] == "exact" else "",
+        "paymentInstrumentMode": instrument["mode"], "paymentInstrumentAccepted": instrument["accepted"],
+        "totalAmount": v1.gold_amount_string(total, loc["currency"]), "amountMinorUnits": total,
+        "purchaseDate": when.date().isoformat() if has_date else "",
+        "purchaseTime": f"{when.hour:02d}:{when.minute:02d}" if has_time else "",
+        "noteItems": sorted(set(names)),
+    })
+    return content, traits
+
+
 def overflow(rng, loc, content, limit):
     legal = BOILERPLATE[loc["language"]]["legal"]
     while len(content) <= limit + 200:
@@ -366,7 +395,11 @@ def make_memory(rng, profile, records, by_merchant, single_category, work_mercha
     return memory[:1000], wrong_about, helps
 
 
-def make_case(rng, case, user, limit, world=LOCALES):
+def make_case(rng, case, user, limit, world=LOCALES, varied=None):
+    """`varied`, when given, is the case's own random stream for
+    `varied_receipt`: a till receipt it picks is re-rendered in a varied
+    layout in place of the one built here. `rng` is drawn from exactly as
+    without it, so every other case comes out as it would have."""
     gold = dict(case["gold"])
     traits = list(case["traits"])
     style = case["style"]
@@ -377,6 +410,7 @@ def make_case(rng, case, user, limit, world=LOCALES):
 
     traits = [t for t in traits if t != "ledger_lookup_useful"]
     roll = rng.random()
+    original_gold = dict(gold)
     if style == "till" and 0.03 <= roll < 0.35:
         rendered = long_receipt(rng, locale, case, gold, world)
         if rendered:
@@ -392,6 +426,12 @@ def make_case(rng, case, user, limit, world=LOCALES):
     elif style == "email" and roll < 0.6:
         content = lengthen_email(rng, loc, content)
         traits.append("long_content")
+    if varied is not None and style == "till" and expected != "rejected_too_long" and varied.random() < varied.share:
+        varied_gold = dict(original_gold)
+        varied_till = varied_receipt(varied, locale, case, varied_gold, world)
+        if varied_till:
+            content, traits = varied_till
+            gold = varied_gold
 
     gold["categoryAccepted"] = [gold["category"]] if gold["category"] else []
     if style == "casual" and "mixed_merchant" in traits:
@@ -441,12 +481,23 @@ def fingerprint(cases, users):
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
-def build(seed, per_locale, users_per_locale, limit=CONTENT_CHARACTER_LIMIT, novel_share=0.0, novel_split="train"):
+def varied_stream(seed, case_id, share):
+    """A case's own stream for the varied layouts, so turning them on never
+    moves another case's draws."""
+    stream = random.Random(f"variety-{seed}-{case_id}")
+    stream.share = share
+    return stream
+
+
+def build(seed, per_locale, users_per_locale, limit=CONTENT_CHARACTER_LIMIT, novel_share=0.0, novel_split="train",
+          variety=0.0):
     """`novel_share` is the share of each user's merchants and item names
     that are invented for them (`novel_names`); 0 draws the real list only, as
     the frozen `dev` and `holdout` suites do. `novel_split` is the half of
     the invented names it draws from: `train` for training data, `eval` for
-    a suite that must hold only names no training suite can contain."""
+    a suite that must hold only names no training suite can contain.
+    `variety` is the share of till receipts re-rendered in the varied layouts
+    of `tills.py`; 0, as every frozen suite was built, leaves them as they are."""
     rng = random.Random(seed)
     profiles, v1_cases, worlds = [], [], {}
     for home in v1.HOME_LOCALES:
@@ -464,7 +515,8 @@ def build(seed, per_locale, users_per_locale, limit=CONTENT_CHARACTER_LIMIT, nov
     extra = random.Random(seed * 1000 + SUITE_VERSION)
     users = {p["id"]: make_user(extra, p, [c for c in v1_cases if c["profile"] == p["id"]], worlds[p["id"]])
              for p in profiles}
-    cases = interleave([make_case(extra, c, users[c["profile"]], limit, worlds[c["profile"]]) for c in v1_cases])
+    cases = interleave([make_case(extra, c, users[c["profile"]], limit, worlds[c["profile"]],
+                                  varied_stream(seed, c["id"], variety) if variety else None) for c in v1_cases])
     return cases, list(users.values())
 
 
@@ -478,11 +530,13 @@ def main():
                     help="share of each user's merchants and item names invented for them (0: the real list)")
     ap.add_argument("--novel-split", choices=("train", "eval"), default="train",
                     help="the half of the invented names to draw from: train for training data, eval for a test suite")
+    ap.add_argument("--variety", type=float, default=0.0,
+                    help="share of till receipts re-rendered in tills.py's varied layouts (0: as the frozen suites)")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "suites"))
     args = ap.parse_args()
 
     cases, users = build(args.seed, args.per_locale, args.users_per_locale, novel_share=args.novel_share,
-                         novel_split=args.novel_split)
+                         novel_split=args.novel_split, variety=args.variety)
     folder = os.path.join(args.out_dir, args.name)
     os.makedirs(folder, exist_ok=True)
     for name, rows in (("cases.jsonl", cases), ("users.jsonl", users)):
@@ -499,6 +553,8 @@ def main():
             "styles": dict(Counter(c["style"] for c in cases)),
             "traits": dict(Counter(t for c in cases for t in c["traits"]).most_common()),
             "memory": dict(Counter(u["memoryKind"] for u in users))}
+    if args.variety:
+        meta["variety"] = args.variety
     with open(os.path.join(folder, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
     print(json.dumps(meta, ensure_ascii=False, indent=1))
