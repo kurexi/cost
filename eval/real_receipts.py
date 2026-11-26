@@ -747,6 +747,8 @@ def main():
     if not train and not held:
         raise SystemExit("no usable receipts: look at the counts above (files: shows the formats found)")
     common = {"seed": args.seed, "dataset": args.dataset, "evalShare": args.eval_share, "dayFirst": not args.month_first,
+              "defaultCurrency": args.currency, "languageSetting": args.language, "ocr": args.ocr,
+              "ocrLanguages": args.ocr_languages if args.ocr else None, "trainCopies": args.train_copies,
               "knownShare": args.known_share, "casesPerUser": args.cases_per_user, "conversion": dict(stats)}
     for name, receipts, copies in ((args.train_name, train, args.train_copies), (args.eval_name, held, 1)):
         if not receipts:

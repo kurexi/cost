@@ -27,7 +27,9 @@ sft_a100.ipynb  one round of distillation on Colab: teacher on train (A100, firs
 train_grpo.py   GRPO from an SFT adapter: whole sessions of the real loop, sampled in-process and graded with the reward
 grpo.ipynb      GRPO on Colab (A100 or L4): train-rl suite, train_grpo.py, pick a kept step on val-rl, merge, bf16 score
 real_receipts.py turns a downloaded receipt dataset (OCR text or images, with labelled merchant, total and date) into a train suite and an eval suite
-real_receipts_sft.ipynb an SFT round with real receipts from Kaggle: your Kaggle key at run time, convert, teacher, pairs, SFT, merge, score on dev-receipts
+real_receipts_eval.ipynb the baseline on real receipts from Kaggle, before any training on them: your Kaggle key at run time, convert, score the shipped GGUF, the untuned 0.8B and the teacher on dev-receipts, audit the gold
+real_receipts_sft.ipynb the SFT round after it: the teacher on train-receipts beside the generated suites, pairs, SFT, merge, scored against that baseline
+audit.py        the cases a run gets wrong, field by field, beside other runs' answers and the gold: where every run misses, suspect the gold
 suites/         dev (280 cases), dev-novel (280, invented merchants and items), dev-varied (280, varied tills) and holdout (140), committed and frozen
 novel_names.py  invents merchants and item names per simulated user, from two disjoint halves (train, eval)
 runs/           one folder per run: meta, results, transcripts, grade (in the records folder)
@@ -375,16 +377,38 @@ The train suite's name must start with `train` and the eval suite's must
 not, so only the train suite can be trained on. Both are git-ignored,
 because the dataset's licence decides what may be published.
 
-`real_receipts_sft.ipynb` runs a whole round on Colab with
-[dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2):
-1. It downloads the dataset with your Kaggle key, read from Colab's secrets
-   or typed into a hidden prompt and passed only to the `kaggle` command.
-2. It prints what the dataset holds, converts it, and shows a few cases
-   with their gold.
-3. The teacher runs on `train-receipts` beside the generated train suites,
-   and the student is trained as in `sft_a100.ipynb`.
-4. The student is scored on `dev`, `dev-novel` and `dev-receipts`, against
-   the shipped model and the teacher.
+**Evaluate before training.** `real_receipts_eval.ipynb` runs on Colab
+with [dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2).
+It downloads the dataset with your Kaggle key, which is read from Colab's
+secrets or typed into a hidden prompt, and passed only to the `kaggle`
+command. It prints what the dataset holds and converts it, keeping the
+suites on Drive. Then it scores these on `dev-receipts`:
+- the shipped file (`kurexi/cost-0.8b-q8`, checked by SHA-256) and the
+  4-bit one, through llama-server as in `baseline_gguf_t4.ipynb`. The
+  shipped file is also rerun on `dev` and compared with its committed row,
+  so a change of server or GPU can't pass for a change in the model;
+- the untuned 0.8B at fp16, the floor;
+- the teacher, the ceiling.
+
+Then `audit.py` shows where they go wrong:
+
+```bash
+python3 audit.py qwen3.8-27b-fp8-v5-dev-receipts qwen3.5-0.8b-grpo-r2-q8_0-dev-receipts --limit 25
+```
+
+It counts, field by field, the cases each run gets wrong and the cases
+every run gets wrong. Then it shows the first run's misses beside every
+run's answer and the gold. Where every model misses the same field, the
+gold is the first suspect: a currency that is never printed, swapped day
+and month, or a category the keyword rules got wrong. A suite whose gold is
+wrong is rebuilt before anything is trained on it.
+
+`real_receipts_sft.ipynb` is the round after that. It runs the teacher on
+`train-receipts` beside the generated train suites, then the pairs and SFT
+as in `sft_a100.ipynb`, the merge, and bf16 scores on `dev`, `dev-novel`
+and `dev-receipts` against the baseline rows. Both notebooks take the same
+conversion settings, and each stops if the suites on Drive were built with
+others.
 
 ## GRPO
 
