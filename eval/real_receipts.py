@@ -42,8 +42,6 @@ CURRENCY_MARKERS = (
     ("JPY", (r"円", r"\bJPY\b", r"¥")), ("CAD", (r"\bCAD\b", r"\bC\$")), ("AUD", (r"\bAUD\b", r"\bA\$")),
     ("USD", (r"\bUSD\b", r"\bUS\$")),
 )
-# A bare "$" names no country: Malaysian receipts print it for ringgit (dhiaznaidi/receiptdatasetssd300v2's
-# Unihakka receipts), so it means the --currency the dataset's receipts are in, like a receipt printing none.
 CATEGORY_WORDS = {
     "fuel": ("petrol", "petronas", "shell", "caltex", "petron", "bhpetrol", "esso", "texaco", "chevron", "fuel",
              "station service", "stesen minyak", "petrokiosk", "carburant", "essence", "gasoil", "agil", "total energies", "totalenergies", "oilibya"),
@@ -183,7 +181,6 @@ def cord_text(lines):
 
 
 def positioned_words(data):
-    """(xmin, ymin, xmax, ymax, text) for every {"Coordinates": {xmin..ymax}, "Text": ...} found anywhere in data."""
     out = []
     if isinstance(data, dict):
         where = data.get("Coordinates") or data.get("coordinates")
@@ -204,7 +201,6 @@ def positioned_words(data):
 
 
 def lines_from_words(words):
-    """Words grouped into printed lines by their vertical middles, each line read left to right."""
     rows = []
     for x0, y0, x1, y1, text in sorted(words, key=lambda w: (w[1] + w[3]) / 2):
         middle = (y0 + y1) / 2
@@ -216,9 +212,6 @@ def lines_from_words(words):
 
 
 def parse_important_words(data):
-    """{"important_words": [{"label": "date", "words": [{"Coordinates": ..., "Text": ...}]}]}, as in
-    dhiaznaidi/receiptdatasetssd300v2's info_data: a total is the last amount among its words (a group can hold
-    "TOTAL" beside "22.44"), other fields are their words in reading order."""
     labels, ignored = {}, []
     for group in data["important_words"]:
         if not isinstance(group, dict):
@@ -384,14 +377,12 @@ class TesseractOCR:
         from PIL import Image, ImageOps
         self.tesseract, self.image, self.ops, self.languages = pytesseract, Image, ImageOps, languages
         self.workers = workers or os.cpu_count() or 1
-        # one thread per tesseract process: the receipts run in parallel instead, which is faster
         os.environ.setdefault("OMP_THREAD_LIMIT", "1")
 
     def open(self, path):
         return self.ops.exif_transpose(self.image.open(path)).convert("L")
 
     def read(self, path, crops, full):
-        """The text of each field's first box that reads as something, and the whole receipt's if `full`."""
         try:
             image = self.open(path)
             fields = {}
@@ -402,7 +393,6 @@ class TesseractOCR:
             return {}, "", f"{type(error).__name__}: {error}"
 
     def read_all(self, jobs):
-        """Runs `read` on (path, crops, full) jobs in parallel, in order, printing progress to stderr."""
         from concurrent.futures import ThreadPoolExecutor
         started, out = time.time(), []
         with ThreadPoolExecutor(self.workers) as pool:
@@ -433,8 +423,6 @@ class TesseractOCR:
 def scan(root):
     found = defaultdict(dict)
     images, coco = {}, []
-    # folders in sorted order, so the same files give the same suites on every filesystem: where two files label
-    # one field, the first one read wins (gdt's key fields before info_data's word groups, for example)
     for folder, dirs, names in os.walk(root):
         dirs.sort()
         for name in sorted(names):
@@ -523,8 +511,6 @@ def merge(target, parsed, fmt):
 
 
 def receipts_from(root, ocr=None, stats=None, text_dir=None):
-    """`text_dir` holds <image stem>.txt files read from the photos elsewhere (ocr_macos.py): a receipt the
-    dataset gives no text for takes its text from there, before any OCR here."""
     stats = stats if stats is not None else Counter()
     pending = []
     for key, entry in sorted(scan(root).items()):
@@ -554,7 +540,6 @@ def receipts_from(root, ocr=None, stats=None, text_dir=None):
                 stats["text_from_text_dir"] += 1
         full = bool(not text and ocr and entry.get("image"))
         if crops or full:
-            # no OCR for a receipt that has no total or merchant to read: it would be dropped anyway
             missing = [f for f in ("total", "merchant") if not labels.get(f) and f not in crops]
             if missing:
                 stats["dropped:no_" + missing[0]] += 1
@@ -584,8 +569,6 @@ def receipts_from(root, ocr=None, stats=None, text_dir=None):
     return out
 
 
-# "€" before an amount or after one with a decimal comma; a "€" after a dot-decimal amount counts only twice over,
-# since OCR reads the "SR" tax code Malaysian receipts print after each amount as "€"
 EURO_SURE = re.compile(r"€\s?\d+[.,]\d{2}(?!\d)|(?<![\d.,])\d+,\d{2}\s?€(?!\w)")
 EURO_AFTER_DOT = re.compile(r"(?<![\d.,])\d+\.\d{2}\s?€(?!\w)")
 
@@ -656,7 +639,6 @@ SPLIT_DECIMALS = re.compile(r"(\d)([.,]) (\d{2})(?!\d)")
 
 
 def amounts_in(text, currency):
-    """Every amount printed in the text, also where OCR put a space after the decimal point ("5. 04")."""
     values = set()
     for match in NUMBER.finditer(text + "\n" + SPLIT_DECIMALS.sub(r"\1\2\3", text)):
         value = minor_units(match.group(0).replace(" ", ""), currency)
@@ -686,7 +668,6 @@ def words_in(text):
 
 
 def category_kind(merchant, text):
-    # the whole receipt: OCR that reads the columns apart puts the item lines far down
     name, body = words_in(merchant), words_in(text)
     for kind, words in CATEGORY_WORDS.items():
         if any(f" {w} " in name or (w in ("mart",) and re.search(r"[a-z]mart ", name)) for w in words):
@@ -701,12 +682,9 @@ def category_kind(merchant, text):
 
 
 def one_kind_per_merchant(receipts, stats):
-    """Gives every receipt of a merchant the same category: the most common one among its receipts the rules were
-    sure of, or among all of them when none was sure. The rules read each receipt's own text, so one shop's receipts
-    could come out under different categories; a user files a shop under one."""
     names = sorted({re.sub(r"[^a-z0-9]", "", words_in(r["merchant"])) for r in receipts})
     same = {name: name for name in names}
-    for index, name in enumerate(names):  # a label typo ("Unihakka Interantional") joins its shop's other receipts
+    for index, name in enumerate(names):
         for other in names[:index]:
             if len(name) >= 8 and SequenceMatcher(None, name, other).ratio() >= 0.9:
                 same[name] = same[other]
@@ -743,7 +721,6 @@ def prepare(receipts, currency, day_first, stats):
         if not amount:
             stats["dropped:unreadable_total"] += 1
             continue
-        # kept: a total misread or never printed is worked out from the other lines, and the gold has it
         total_printed = amount in amounts_in(text, code)
         day = parse_date(labels.get("date", ""), day_first)
         if day is None:

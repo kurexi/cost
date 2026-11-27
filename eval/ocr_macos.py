@@ -1,17 +1,3 @@
-"""Reads receipt photos into text on a Mac, with macOS's own OCR (the Vision framework), for real_receipts.py.
-
-Writes <out>/<image stem>.txt for every photo under --images and skips the photos already read, so a stopped run picks up where it left off. Then real_receipts.py --text-dir <out> uses that
-text wherever the dataset gives none, instead of running tesseract.
-
-The text is laid out the way the app's OCR hands it to the agent (`--layout observations`, the default): one line
-per text observation, in Vision's order, so a receipt's two columns come out as separate lines ("TOTAL:", then
-"193.00"), as the agent's instructions describe. No coordinates reach the agent, here or in the app.
-`--layout lines` instead joins the observations printed side by side into one line.
-
-    uv run --with pyobjc-framework-Vision python ocr_macos.py --images ~/Downloads/receiptdatasetssd300v2/fullDataset/images --out ~/Downloads/macos-ocr
-
-Needs macOS 13 or later. Runs on the Mac only: nothing is uploaded.
-"""
 import argparse
 import os
 import sys
@@ -22,7 +8,6 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp", "
 
 
 def lines_from_boxes(boxes):
-    """(x0, y0, x1, y1, text) boxes, top-left origin, grouped into printed lines by their vertical middles."""
     rows = []
     for x0, y0, x1, y1, text in sorted(boxes, key=lambda b: (b[1] + b[3]) / 2):
         middle = (y0 + y1) / 2
@@ -45,7 +30,6 @@ def recognise(path, languages, fast, layout):
         request.setUsesLanguageCorrection_(not fast)
         if languages:
             request.setRecognitionLanguages_(languages)
-        # from a URL, Vision reads the photo's EXIF orientation itself
         handler = Vision.VNImageRequestHandler.alloc().initWithURL_options_(NSURL.fileURLWithPath_(path), None)
         ok, error = handler.performRequests_error_([request], None)
         if not ok:
@@ -55,7 +39,7 @@ def recognise(path, languages, fast, layout):
             candidates = observation.topCandidates_(1)
             if not candidates:
                 continue
-            box = observation.boundingBox()  # normalised to 0..1, origin at the bottom left
+            box = observation.boundingBox()
             x0, top = box.origin.x, 1 - box.origin.y - box.size.height
             boxes.append((x0, top, x0 + box.size.width, top + box.size.height, str(candidates[0].string())))
         if layout == "observations":
@@ -64,7 +48,7 @@ def recognise(path, languages, fast, layout):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description="Reads receipt photos into text with macOS Vision OCR, for real_receipts.py --text-dir")
     ap.add_argument("--images", required=True, help="folder of receipt photos (searched recursively)")
     ap.add_argument("--out", required=True, help="folder for the .txt files")
     ap.add_argument("--languages", default="en-US,fr-FR", help="Vision recognition languages, most likely first")
@@ -77,7 +61,7 @@ def main():
     if sys.platform != "darwin":
         raise SystemExit("ocr_macos.py runs on macOS only")
     try:
-        import Vision  # noqa: F401
+        import Vision
     except ImportError:
         raise SystemExit("needs PyObjC's Vision bindings: uv run --with pyobjc-framework-Vision python ocr_macos.py ...")
 
