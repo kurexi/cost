@@ -116,6 +116,62 @@ class Parsing(Fixture):
         self.assertFalse(receipts[0]["ocr"])
         self.assertEqual(stats["label_not_used:subtotal"], 1)
 
+    def test_folders_are_read_in_sorted_order_so_gdt_labels_win(self):
+        def word(text, x, y):
+            return {"Coordinates": {"xmin": x, "ymin": y, "xmax": x + 60, "ymax": y + 30}, "Text": text}
+
+        self.write("fullDataset/images/7.jpg", "not really an image")
+        self.write("fullDataset/info_data/7.json", {"important_words": [
+            {"label": "total", "words": [word("TOTAL", 100, 800), word("RMO3.90", 500, 798)]}]})
+        self.write("fullDataset/gdt/7.json", {"company": "CORNER CAFE", "date": "01/01/18", "total": "63.90"})
+        listed = os.walk
+        self.addCleanup(setattr, rr.os, "walk", listed)
+
+        def info_data_first(top, **kwargs):
+            for folder, dirs, names in listed(top, **kwargs):
+                dirs[:] = sorted(dirs, reverse=True)
+                yield folder, dirs, names
+
+        rr.os.walk = info_data_first
+        entry = rr.scan(self.root)["7"]
+        self.assertEqual(entry["labels"]["total"], "63.90")
+
+    def test_a_bare_dollar_is_the_datasets_own_currency(self):
+        text = "UNIHAKKA INTERNATIONAL SDN BHD\nJohor Bahru\nTotal Amount: $8.20"
+        self.assertEqual(rr.detect_currency(text, {"total": "8.20"}, "MYR"), "MYR")
+        self.assertEqual(rr.detect_currency(text, {"total": "8.20"}, "USD"), "USD")
+        self.assertEqual(rr.detect_currency("TOTAL US$ 8.20", {"total": "8.20"}, "MYR"), "USD")
+        self.assertEqual(rr.detect_currency("TOTAL S$8.20", {"total": "8.20"}, "MYR"), "SGD")
+
+    def test_ocr_noise_read_as_euro_is_not_euro(self):
+        self.assertEqual(rr.detect_currency("BESI 33.9\n136.00 €R\n63.35 €", {"total": "63.35"}, "MYR"), "MYR")
+        self.assertEqual(rr.detect_currency("Amount (RM)\n8.4€", {"total": "8.40"}, "MYR"), "MYR")
+        self.assertEqual(rr.detect_currency("CAFE 2,50 €\nTOTAL 12,50 €", {"total": "12,50"}, "MYR"), "EUR")
+        self.assertEqual(rr.detect_currency("TOTAL €12.50", {"total": "12.50"}, "MYR"), "EUR")
+        self.assertEqual(rr.detect_currency("CAFE 2.50 €\nTOTAL 12.50 €", {"total": "12.50"}, "MYR"), "EUR")
+        self.assertEqual(rr.detect_currency("TOTAL EUR 12.50", {"total": "12.50"}, "MYR"), "EUR")
+
+    def test_malay_shop_words_and_dotted_names_find_their_category(self):
+        for merchant, text, kind in (("Mr. D.I.Y. (M)", "", "home"), ("Pasaraya Borong Pintar", "", "groceries"),
+                                     ("De Jelita Stesen Minyak", "", "fuel"), ("The Toast F&B", "", "dining"),
+                                     ("Kedai Papan Yew Chuan", "", "home"),
+                                     ("Unihakka International", "TAX INVOICE\n" * 30 + "BAR WANG RICE\nRICE SET", "dining")):
+            self.assertEqual(rr.category_kind(merchant, text)[0], kind, merchant)
+
+    def test_a_merchant_keeps_one_category_across_its_receipts(self):
+        def receipt(merchant, kind, sure):
+            return {"merchant": merchant, "kind": kind, "kind_sure": sure}
+
+        receipts = [receipt("Mr. D.I.Y. (M)", "home", True), receipt("Mr. D.I.Y. (M)", "groceries", False),
+                    receipt("Mr. D.I.Y. (M)", "health", True), receipt("Mr. D.I.Y. (M)", "home", True),
+                    receipt("Unihakka International", "dining", True),
+                    receipt("Unihakka Interantional", "shopping", False)]
+        stats = Counter()
+        rr.one_kind_per_merchant(receipts, stats)
+        self.assertEqual([r["kind"] for r in receipts], ["home"] * 4 + ["dining"] * 2)
+        self.assertTrue(all(r["kind_sure"] for r in receipts))
+        self.assertEqual(stats["category_unified"], 3)
+
     def test_text_read_elsewhere_fills_in_for_the_dataset_and_tesseract(self):
         self.write("images/7.jpg", "not really an image")
         self.write("labels/7.json", {"total": "22.44", "company": "CORNER CAFE", "date": "01/01/18"})
@@ -186,7 +242,8 @@ class Fields(unittest.TestCase):
     def test_categories(self):
         self.assertEqual(rr.category_kind("Restoran Wan Sheng", ""), ("dining", True))
         self.assertEqual(rr.category_kind("99 Speedmart", ""), ("groceries", True))
-        self.assertEqual(rr.category_kind("Syarikat Perniagaan Gin Kee", "CEMENT 50KG\nHARDWARE"), ("home", False))
+        self.assertEqual(rr.category_kind("Syarikat Perniagaan Gin Kee", "CEMENT 50KG\nHARDWARE"), ("home", True))
+        self.assertEqual(rr.category_kind("Syarikat Perniagaan Gin Kee", "PAINT 1LT\nROLLER"), ("home", False))
         self.assertEqual(rr.category_kind("ABC Trading", "")[1], False)
 
 

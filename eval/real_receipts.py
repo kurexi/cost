@@ -11,6 +11,7 @@ import time
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from datetime import date, timedelta
+from difflib import SequenceMatcher
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..")))
@@ -34,16 +35,18 @@ FIELD_KEYS = {
     "time": ("time", "purchase_time", "transaction_time", "heure"),
 }
 CURRENCY_MARKERS = (
-    ("MYR", (r"\bRM\s?\d", r"\bMYR\b", r"\bRINGGIT\b")), ("SGD", (r"\bS\$", r"\bSGD\b")),
+    ("MYR", (r"\bRM\s?\d", r"\(RM\)", r"\bRM\b", r"\bMYR\b", r"\bRINGGIT\b")), ("SGD", (r"\bS\$", r"\bSGD\b")),
     ("TND", (r"\bTND\b", r"\d\s?DT\b", r"\bDT\s?\d", r"\bDINARS?\b")), ("IDR", (r"\bRp\.?\s?\d", r"\bIDR\b")),
     ("INR", (r"₹", r"\bINR\b", r"\bRs\.?\s?\d")), ("VND", (r"₫", r"\bVND\b")), ("GBP", (r"£", r"\bGBP\b")),
-    ("EUR", (r"€", r"\bEUR\b", r"\bEURO?S?\b")), ("CNY", (r"\bRMB\b", r"\bCNY\b", r"元")),
+    ("EUR", (r"\bEUR\b", r"\bEUROS?\b")), ("CNY", (r"\bRMB\b", r"\bCNY\b", r"元")),
     ("JPY", (r"円", r"\bJPY\b", r"¥")), ("CAD", (r"\bCAD\b", r"\bC\$")), ("AUD", (r"\bAUD\b", r"\bA\$")),
-    ("USD", (r"\bUSD\b", r"\bUS\$", r"\$\s?\d")),
+    ("USD", (r"\bUSD\b", r"\bUS\$")),
 )
+# A bare "$" names no country: Malaysian receipts print it for ringgit (dhiaznaidi/receiptdatasetssd300v2's
+# Unihakka receipts), so it means the --currency the dataset's receipts are in, like a receipt printing none.
 CATEGORY_WORDS = {
     "fuel": ("petrol", "petronas", "shell", "caltex", "petron", "bhpetrol", "esso", "texaco", "chevron", "fuel",
-             "station service", "carburant", "essence", "gasoil", "agil", "total energies", "totalenergies", "oilibya"),
+             "station service", "stesen minyak", "petrokiosk", "carburant", "essence", "gasoil", "agil", "total energies", "totalenergies", "oilibya"),
     "health": ("pharmacy", "pharmacie", "farmasi", "clinic", "klinik", "clinique", "guardian", "watsons", "medical",
                "dental", "hospital", "hopital", "caring", "parapharmacie", "optique", "optical", "cvs", "walgreens"),
     "coffee": ("coffee", "kopi", "cafe", "café", "starbucks", "tealive", "boba", "bubble tea", "salon de the",
@@ -52,13 +55,17 @@ CATEGORY_WORDS = {
                "nasi", "kedai makan", "burger", "pizza", "pizzeria", "sushi", "bbq", "steamboat", "catering", "eatery",
                "dining", "canteen", "kantin", "seafood", "dim sum", "mcdonald", "mcdonalds", "kfc", "domino", "subway",
                "kopitiam", "chicken rice", "brasserie", "snack", "fast food", "patisserie", "boulangerie", "bakery",
-               "bakeri", "cuisine", "tacos", "shawarma", "creperie", "rotisserie"),
+               "bakeri", "cuisine", "tacos", "shawarma", "creperie", "rotisserie", "f b", "rice", "restaurants",
+               "confectionery", "cake", "cakes", "pastry", "steakhouse", "burgers", "snacks"),
     "groceries": ("supermarket", "supermarche", "supermarché", "hypermarket", "hypermarche", "mart", "minimart",
-                  "mini market", "grocer", "grocery", "groceries", "pasar", "provision", "sundry", "kedai runcit",
+                  "mini market", "grocer", "grocery", "groceries", "pasar", "pasaraya", "provision", "sundry",
+                  "kedai runcit", "runcit", "cash carry", "borong",
                   "speedmart", "familymart", "7 eleven", "7eleven", "aeon", "giant", "tesco", "lotus", "mydin",
                   "econsave", "carrefour", "monoprix", "geant", "magasin general", "aziza", "epicerie", "épicerie",
                   "walmart", "kroger", "aldi", "lidl", "costco", "fresh", "market", "marché", "marche", "fruits"),
-    "home": ("hardware", "perkakasan", "furniture", "ikea", "mr diy", "mrdiy", "home", "electrical", "building",
+    "home": ("hardware", "perkakasan", "furniture", "furnishing", "ikea", "mr diy", "mrdiy", "home", "electrical",
+             "building", "papan", "besi", "simen", "cement", "welding", "steel", "light", "lights", "garden",
+             "household", "machinery",
              "quincaillerie", "bricolage", "plumbing", "paint", "lighting", "maison", "kitchenware"),
     "transport": ("parking", "taxi", "grab", "toll", "transit", "railway", "rail", "bus", "ticket", "tiket", "uber",
                   "metro", "airline", "airport", "peage", "péage", "louage"),
@@ -68,7 +75,7 @@ CATEGORY_WORDS = {
                  "vêtements", "chaussures", "zara"),
     "pets": ("pet shop", "petshop", "veterinary", "vet clinic", "animalerie"),
     "kids": ("toys", "toy", "baby", "jouets"),
-    "shopping": ("stationery", "stationary", "book", "books", "bookstore", "librairie", "papeterie", "popular",
+    "shopping": ("stationery", "stationary", "book", "books", "bookstore", "bookcentre", "buku", "librairie", "papeterie", "popular",
                  "gift", "printing", "electronics", "electronic", "computer", "mobile", "phone", "department store",
                  "mall", "boutique cadeaux"),
 }
@@ -426,7 +433,10 @@ class TesseractOCR:
 def scan(root):
     found = defaultdict(dict)
     images, coco = {}, []
-    for folder, _, names in os.walk(root):
+    # folders in sorted order, so the same files give the same suites on every filesystem: where two files label
+    # one field, the first one read wins (gdt's key fields before info_data's word groups, for example)
+    for folder, dirs, names in os.walk(root):
+        dirs.sort()
         for name in sorted(names):
             path = os.path.join(folder, name)
             ext = os.path.splitext(name)[1].lower()
@@ -574,10 +584,18 @@ def receipts_from(root, ocr=None, stats=None, text_dir=None):
     return out
 
 
+# "€" before an amount or after one with a decimal comma; a "€" after a dot-decimal amount counts only twice over,
+# since OCR reads the "SR" tax code Malaysian receipts print after each amount as "€"
+EURO_SURE = re.compile(r"€\s?\d+[.,]\d{2}(?!\d)|(?<![\d.,])\d+,\d{2}\s?€(?!\w)")
+EURO_AFTER_DOT = re.compile(r"(?<![\d.,])\d+\.\d{2}\s?€(?!\w)")
+
+
 def detect_currency(text, labels, default):
     blob = labels.get("total", "") + "\n" + text
     for code, patterns in CURRENCY_MARKERS:
         if any(re.search(p, blob, re.I if code not in ("JPY", "CNY") else 0) for p in patterns):
+            return code
+        if code == "EUR" and (EURO_SURE.search(blob) or len(EURO_AFTER_DOT.findall(blob)) >= 2):
             return code
     return default
 
@@ -663,11 +681,13 @@ def clean_merchant(raw):
 
 
 def words_in(text):
-    return " " + " ".join(re.findall(r"[a-z0-9éèêàâûôîç]+", text.lower())) + " "
+    text = re.sub(r"\b(?:[a-z]\.){2,}", lambda m: m.group(0).replace(".", ""), text.lower())
+    return " " + " ".join(re.findall(r"[a-z0-9éèêàâûôîç]+", text)) + " "
 
 
 def category_kind(merchant, text):
-    name, body = words_in(merchant), words_in("\n".join(text.splitlines()[:25]))
+    # the whole receipt: OCR that reads the columns apart puts the item lines far down
+    name, body = words_in(merchant), words_in(text)
     for kind, words in CATEGORY_WORDS.items():
         if any(f" {w} " in name or (w in ("mart",) and re.search(r"[a-z]mart ", name)) for w in words):
             return kind, True
@@ -678,6 +698,32 @@ def category_kind(merchant, text):
             return kind, True
         return kind, False
     return "shopping", False
+
+
+def one_kind_per_merchant(receipts, stats):
+    """Gives every receipt of a merchant the same category: the most common one among its receipts the rules were
+    sure of, or among all of them when none was sure. The rules read each receipt's own text, so one shop's receipts
+    could come out under different categories; a user files a shop under one."""
+    names = sorted({re.sub(r"[^a-z0-9]", "", words_in(r["merchant"])) for r in receipts})
+    same = {name: name for name in names}
+    for index, name in enumerate(names):  # a label typo ("Unihakka Interantional") joins its shop's other receipts
+        for other in names[:index]:
+            if len(name) >= 8 and SequenceMatcher(None, name, other).ratio() >= 0.9:
+                same[name] = same[other]
+                break
+    groups = defaultdict(list)
+    for receipt in receipts:
+        groups[same[re.sub(r"[^a-z0-9]", "", words_in(receipt["merchant"]))]].append(receipt)
+    for group in groups.values():
+        voters = [r for r in group if r["kind_sure"]] or group
+        votes = Counter(r["kind"] for r in voters)
+        kind = min(votes, key=lambda k: (-votes[k], k))
+        sure = any(r["kind_sure"] for r in group)
+        for receipt in group:
+            if receipt["kind"] != kind:
+                stats["category_unified"] += 1
+            receipt["kind"], receipt["kind_sure"] = kind, sure
+    return receipts
 
 
 def prepare(receipts, currency, day_first, stats):
@@ -838,7 +884,7 @@ def convert(root, seed, eval_share, currency, day_first, language, ocr=None, tex
     stats = Counter()
     raw = receipts_from(root, ocr, stats, text_dir)
     stats["parsed"] = len(raw)
-    receipts = prepare(raw, currency, day_first, stats)
+    receipts = one_kind_per_merchant(prepare(raw, currency, day_first, stats), stats)
     stats["kept"] = len(receipts)
     language = detect_language(receipts) if language == "auto" else language
     train = [r for r in receipts if split_of(r, eval_share, seed) == "train"]
