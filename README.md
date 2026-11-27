@@ -94,27 +94,30 @@ Every run, at every size, is in [eval/BENCHMARK.md](eval/BENCHMARK.md).
 
 ## On real receipts
 
-`dev` is generated. `dev-receipts` is 134 real Malaysian till receipts from
-the Kaggle dataset
-[dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2),
-photos the model has never trained on. The photos were read with macOS's
-own OCR, so the agent gets what the app's OCR hands it: one line per piece
-of text, with labels and amounts often on different lines. The right
-answers come from the dataset's labels. The merchant also counts as right
-under the trading name its receipt prints, when that differs from the
-legal company name in the label.
+`dev` is generated. `dev-receipts` is 128 real till receipts, nearly all
+Malaysian, from the Kaggle dataset
+[dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2).
+They come from 72 shops, and no receipt from those shops is used in
+training. The photos were read with macOS's own OCR, so the agent gets
+what the app's OCR hands it: one line per piece of text, with labels and
+amounts often on different lines. The right answers come from the
+dataset's labels. The merchant also counts as right under the trading name
+its receipt prints, when that differs from the legal company name in the
+label.
 
 | | weights | records right on `dev-receipts` | amount right | wrong records it would file unreviewed | tool calls a case (wasted) | ran out of tool budget |
 |---|---|---|---|---|---|---|
-| 27B teacher | Qwen3.8-27B, FP8 | 90% (85%–96%) | 98% | 13% | 2.9 (0.1) | 1% of cases |
-| 0.8B as released | Qwen3.5-0.8B, FP16 | 16% (10%–22%) | 58% | 72% | 2.7 (1.0) | 16% of cases |
-| 0.8B trained, shipped | Qwen3.5-0.8B, Q8_0, 0.81 GB GGUF | 58% (50%–66%) | 75% | 21% | 1.6 (0.1) | 4% of cases |
-| 0.8B trained, 4-bit | Qwen3.5-0.8B, Q4_K_M, 0.53 GB GGUF | 52% (44%–60%) | 64% | 34% | 1.4 (0.0) | 0% of cases |
+| 27B teacher | Qwen3.8-27B, FP8 | 80% (73%–87%) | 95% | 27% | 3.1 (0.1) | 2% of cases |
+| 0.8B as released | Qwen3.5-0.8B, FP16 | 26% (18%–34%) | 59% | 71% | 3.4 (1.4) | 15% of cases |
+| 0.8B trained, shipped | Qwen3.5-0.8B, Q8_0, 0.81 GB GGUF | 48% (40%–57%) | 59% | 41% | 1.4 (0.0) | 0% of cases |
+| 0.8B trained, 4-bit | Qwen3.5-0.8B, Q4_K_M, 0.53 GB GGUF | 48% (39%–56%) | 59% | 45% | 1.4 (0.0) | 0% of cases |
 
-Real receipts are harder than `dev` for the shipped model (58% against
-80%), but not for the teacher (90% against 89%). Most of the gap is the
-amount. Of the shipped model's 33 wrong amounts, 14 are the amount before
-GST, 8 the total before cash rounding, and 5 the cash handed over.
+Real receipts are harder than `dev` for both: the teacher gets 80% against
+89%, and the shipped model 48% against 80%. Most of the shipped model's
+gap is the amount: it gets 59% of amounts right, the teacher 95%. Of its
+wrong amounts, about 20 are the amount before tax or service charge, 8
+the total before cash rounding, 5 the cash handed over, and most of the
+rest one line or a subtotal instead of the total.
 [eval/real_receipts_eval.ipynb](eval/real_receipts_eval.ipynb) makes these
 runs, and [eval/real_receipts_sft.ipynb](eval/real_receipts_sft.ipynb) trains
 on the other receipts of the dataset.
