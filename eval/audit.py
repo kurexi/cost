@@ -11,7 +11,8 @@ from spending_agent.money import decimal_string
 
 SHOWN = {
     "is_spending": (lambda g: g["isSpending"], lambda d: d["is_spending"]),
-    "amount": (lambda g: g["totalAmount"], lambda d: decimal_string(d["amount_minor"], d["currency"] or "USD")),
+    "amount": (lambda g: g["totalAmount"], lambda d: "(none)" if d["amount_minor"] is None
+               else decimal_string(d["amount_minor"], d["currency"] or "USD")),
     "currency": (lambda g: g["currencyCode"], lambda d: d["currency"]),
     "merchant": (lambda g: " | ".join(g["merchantAccepted"]), lambda d: d["merchant"]),
     "category": (lambda g: " | ".join(g["categoryAccepted"]) or f"(proposal) {g['proposedCategory']}",
