@@ -4,6 +4,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from collections import Counter
 from datetime import date
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -28,13 +29,12 @@ SROIE_KEY = {"company": "BOOK TA .K (TAMAN DAYA) SDN BHD", "date": "25/12/2018",
 
 class StubOCR:
     def __init__(self, full, crops):
-        self.full_text, self.crops = full, crops
+        self.full_text, self.crops, self.read = full, crops, []
 
-    def full(self, path):
-        return self.full_text
-
-    def crop(self, path, box):
-        return self.crops[box]
+    def read_all(self, jobs):
+        self.read.extend(path for path, _, _ in jobs)
+        return [({field: next((self.crops[b] for b in boxes if self.crops[b]), "") for field, boxes in crops.items()},
+                 self.full_text if full else "", None) for _, crops, full in jobs]
 
 
 def oracle_result(case):
@@ -92,6 +92,57 @@ class Parsing(Fixture):
         receipts = rr.receipts_from(self.root, ocr)
         self.assertEqual(receipts[0]["labels"], {"total": "23.40", "merchant": "PIZZERIA ROMA", "date": "12/05/2022"})
         self.assertTrue(receipts[0]["ocr"])
+
+    def test_important_words_and_positioned_words_need_no_ocr(self):
+        def word(text, x, y):
+            return {"Coordinates": {"xmin": x, "ymin": y, "xmax": x + 60, "ymax": y + 30}, "Text": text}
+
+        self.write("fullDataset/images/7.jpg", "not really an image")
+        self.write("fullDataset/info_data/7.json", {"image_path": "/content/Dataset/train/images/7.jpg",
+                                                    "important_words": [
+            {"label": "date", "words": [word("01/01/18", 400, 900)]},
+            {"label": "subtotal", "words": [word("SUBTOTAL", 100, 700), word("20.00", 500, 702)]},
+            {"label": "total", "words": [word("TOTAL", 100, 800), word("22.44", 500, 798)]},
+            {"label": "company", "words": [word("CORNER", 100, 50), word("CAFE", 170, 52)]},
+            {"label": "logo", "words": []}]})
+        self.write("fullDataset/gdt/7.json", {"words": [
+            word("CAFE", 170, 52), word("CORNER", 100, 50), word("SUBTOTAL", 100, 700), word("20.00", 500, 702),
+            word("TOTAL", 100, 800), word("22.44", 500, 798), word("01/01/18", 400, 900)]})
+        ocr, stats = StubOCR("", {}), Counter()
+        receipts = rr.receipts_from(self.root, ocr, stats)
+        self.assertEqual(ocr.read, [])
+        self.assertEqual(receipts[0]["labels"], {"date": "01/01/18", "total": "22.44", "merchant": "CORNER CAFE"})
+        self.assertEqual(receipts[0]["text"], "CORNER CAFE\nSUBTOTAL 20.00\nTOTAL 22.44\n01/01/18")
+        self.assertFalse(receipts[0]["ocr"])
+        self.assertEqual(stats["label_not_used:subtotal"], 1)
+
+    def test_text_read_elsewhere_fills_in_for_the_dataset_and_tesseract(self):
+        self.write("images/7.jpg", "not really an image")
+        self.write("labels/7.json", {"total": "22.44", "company": "CORNER CAFE", "date": "01/01/18"})
+        text_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, text_dir)
+        with open(os.path.join(text_dir, "7.txt"), "w", encoding="utf-8") as f:
+            f.write("CORNER CAFE\nTOTAL 22.44\n01/01/18\n")
+        ocr, stats = StubOCR("tesseract text", {}), Counter()
+        receipts = rr.receipts_from(self.root, ocr, stats, text_dir)
+        self.assertEqual(ocr.read, [])
+        self.assertEqual(receipts[0]["text"], "CORNER CAFE\nTOTAL 22.44\n01/01/18")
+        self.assertTrue(receipts[0]["ocr"])
+        self.assertEqual(stats["text_from_text_dir"], 1)
+
+    def test_macos_ocr_boxes_become_lines(self):
+        import ocr_macos
+        boxes = [(0.6, 0.502, 0.8, 0.52, "22.44"), (0.1, 0.5, 0.3, 0.52, "TOTAL"), (0.1, 0.1, 0.5, 0.12, "CORNER CAFE")]
+        self.assertEqual(ocr_macos.lines_from_boxes(boxes), "CORNER CAFE\nTOTAL 22.44")
+
+    def test_images_without_a_total_or_merchant_label_are_not_read(self):
+        self.write("images/a.jpg", "not really an image")
+        self.write("labels/a.json", {"date": "12/05/2022"})
+        from collections import Counter
+        ocr, stats = StubOCR("PIZZERIA ROMA\nTOTAL 23.40", {}), Counter()
+        self.assertEqual(rr.receipts_from(self.root, ocr, stats), [])
+        self.assertEqual(ocr.read, [])
+        self.assertEqual(stats["dropped:no_total"], 1)
 
     def test_receipts_without_a_merchant_or_total_are_counted_not_kept(self):
         self.write("box/a.txt", SROIE_TEXT)
@@ -185,12 +236,17 @@ class Suites(Fixture):
         self.assertEqual(rr.build_split(first[2], "train-y", 3, "en", 2, 8, 0.7),
                          rr.build_split(second[2], "train-y", 3, "en", 2, 8, 0.7))
 
-    def test_totals_missing_from_the_text_are_dropped(self):
-        self.write("box/a.txt", "SHOP SDN BHD\n01/01/2019\nTOTAL 5.00")
+    def test_totals_missing_from_the_text_are_kept_and_marked(self):
+        self.write("box/a.txt", "SHOP SDN BHD\n01/01/2019\nCOFFEE 3.00\nCAKE 4.00\nTOTAL 5.OO")
         self.write("key/a.txt", {"company": "SHOP SDN BHD", "date": "01/01/2019", "total": "7.00"})
         stats, _, train, held = rr.convert(self.root, 1, 0.0, "USD", True, "en")
-        self.assertEqual(stats["dropped:total_not_in_text"], 1)
-        self.assertEqual(train + held, [])
+        self.assertEqual(stats["total_not_in_text"], 1)
+        self.assertIn("total_not_in_text", (train + held)[0]["traits"])
+        self.assertEqual((train + held)[0]["amount"], 700)
+
+    def test_a_total_split_by_ocr_after_the_decimal_point_counts_as_printed(self):
+        self.assertIn(504, rr.amounts_in("Total RM Incl. of GST 5. 04", "MYR"))
+        self.assertIn(41292, rr.amounts_in("Total 412. 92", "MYR"))
 
 
 if __name__ == "__main__":

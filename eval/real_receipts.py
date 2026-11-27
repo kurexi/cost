@@ -7,6 +7,7 @@ import os
 import random
 import re
 import sys
+import time
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from datetime import date, timedelta
@@ -174,7 +175,74 @@ def cord_text(lines):
     return "\n".join(" ".join(t for _, t in sorted(words)) for _, words in sorted(rows.items()))
 
 
+def positioned_words(data):
+    """(xmin, ymin, xmax, ymax, text) for every {"Coordinates": {xmin..ymax}, "Text": ...} found anywhere in data."""
+    out = []
+    if isinstance(data, dict):
+        where = data.get("Coordinates") or data.get("coordinates")
+        text = data.get("Text", data.get("text"))
+        if isinstance(where, dict) and isinstance(text, (str, int, float)) and str(text).strip():
+            try:
+                box = tuple(float(where[k]) for k in ("xmin", "ymin", "xmax", "ymax"))
+            except (KeyError, TypeError, ValueError):
+                box = None
+            if box:
+                return [(*box, str(text).strip())]
+        for value in data.values():
+            out.extend(positioned_words(value))
+    elif isinstance(data, list):
+        for value in data:
+            out.extend(positioned_words(value))
+    return out
+
+
+def lines_from_words(words):
+    """Words grouped into printed lines by their vertical middles, each line read left to right."""
+    rows = []
+    for x0, y0, x1, y1, text in sorted(words, key=lambda w: (w[1] + w[3]) / 2):
+        middle = (y0 + y1) / 2
+        if rows and abs(middle - rows[-1]["middle"]) <= max(4.0, 0.5 * rows[-1]["height"]):
+            rows[-1]["words"].append((x0, text))
+        else:
+            rows.append({"middle": middle, "height": max(1.0, y1 - y0), "words": [(x0, text)]})
+    return "\n".join(" ".join(t for _, t in sorted(row["words"])) for row in rows)
+
+
+def parse_important_words(data):
+    """{"important_words": [{"label": "date", "words": [{"Coordinates": ..., "Text": ...}]}]}, as in
+    dhiaznaidi/receiptdatasetssd300v2's info_data: a total is the last amount among its words (a group can hold
+    "TOTAL" beside "22.44"), other fields are their words in reading order."""
+    labels, ignored = {}, []
+    for group in data["important_words"]:
+        if not isinstance(group, dict):
+            continue
+        name, words = str(group.get("label") or ""), positioned_words(group.get("words", []))
+        field = field_of(name)
+        if not field:
+            ignored.append(name)
+            continue
+        if field in labels or not words:
+            continue
+        value = " ".join(lines_from_words(words).splitlines())
+        if field == "total":
+            amounts = NUMBER.findall(value)
+            value = amounts[-1] if amounts else ""
+        if value.strip():
+            labels[field] = value.strip()
+    found = {"labels": labels} if labels else {}
+    if ignored:
+        found["ignored_labels"] = ignored
+    return found or None
+
+
 def parse_json_object(data):
+    if isinstance(data, list):
+        words = positioned_words(data)
+        return {"text": lines_from_words(words)} if words else None
+    if not isinstance(data, dict):
+        return None
+    if isinstance(data.get("important_words"), list):
+        return parse_important_words(data)
     if "images" in data and "annotations" in data:
         return {"coco": data}
     if "ground_truth" in data and isinstance(data["ground_truth"], str):
@@ -201,6 +269,10 @@ def parse_json_object(data):
         lines = [line if isinstance(line, str) else (line.get("text") or line.get("transcription") or "")
                  for line in data["lines"]]
         found["text"] = text_from_lines(lines)
+    if "text" not in found:
+        words = positioned_words(data)
+        if words:
+            found["text"] = lines_from_words(words)
     labels = labels_from_mapping(data)
     for key in ("labels", "fields", "entities", "annotation", "annotations", "key_info", "kie"):
         if isinstance(data.get(key), dict):
@@ -300,22 +372,46 @@ def parse_csv(path):
 
 
 class TesseractOCR:
-    def __init__(self, languages="eng"):
+    def __init__(self, languages="eng", workers=None):
         import pytesseract
         from PIL import Image, ImageOps
         self.tesseract, self.image, self.ops, self.languages = pytesseract, Image, ImageOps, languages
-        self.opened = {}
+        self.workers = workers or os.cpu_count() or 1
+        # one thread per tesseract process: the receipts run in parallel instead, which is faster
+        os.environ.setdefault("OMP_THREAD_LIMIT", "1")
 
     def open(self, path):
-        if path not in self.opened:
-            self.opened = {path: self.ops.exif_transpose(self.image.open(path)).convert("L")}
-        return self.opened[path]
+        return self.ops.exif_transpose(self.image.open(path)).convert("L")
 
-    def full(self, path):
-        return self.tesseract.image_to_string(self.open(path), lang=self.languages, config="--psm 4")
+    def read(self, path, crops, full):
+        """The text of each field's first box that reads as something, and the whole receipt's if `full`."""
+        try:
+            image = self.open(path)
+            fields = {}
+            for field, boxes in crops.items():
+                fields[field] = next((v for v in (self.crop(image, box) for box in boxes) if v), "")
+            return fields, self.full(image) if full else "", None
+        except Exception as error:
+            return {}, "", f"{type(error).__name__}: {error}"
 
-    def crop(self, path, box):
-        image = self.open(path)
+    def read_all(self, jobs):
+        """Runs `read` on (path, crops, full) jobs in parallel, in order, printing progress to stderr."""
+        from concurrent.futures import ThreadPoolExecutor
+        started, out = time.time(), []
+        with ThreadPoolExecutor(self.workers) as pool:
+            for done, result in enumerate(pool.map(lambda job: self.read(*job), jobs), 1):
+                out.append(result)
+                if done % 25 == 0 or done == len(jobs):
+                    elapsed = time.time() - started
+                    print(f"ocr {done}/{len(jobs)} receipts, {elapsed:.0f} s, about "
+                          f"{elapsed / done * (len(jobs) - done):.0f} s to go ({self.workers} workers)",
+                          file=sys.stderr, flush=True)
+        return out
+
+    def full(self, image):
+        return self.tesseract.image_to_string(image, lang=self.languages, config="--psm 4")
+
+    def crop(self, image, box):
         x0, y0, x1, y1 = box
         if max(box) <= 1.0:
             x0, x1, y0, y1 = x0 * image.width, x1 * image.width, y0 * image.height, y1 * image.height
@@ -412,33 +508,61 @@ def merge(target, parsed, fmt):
         target["text"] = parsed["text"]
     if parsed.get("boxes"):
         target.setdefault("boxes", []).extend(parsed["boxes"])
+    if parsed.get("ignored_labels"):
+        target.setdefault("ignored_labels", []).extend(parsed["ignored_labels"])
 
 
-def receipts_from(root, ocr=None, stats=None):
+def receipts_from(root, ocr=None, stats=None, text_dir=None):
+    """`text_dir` holds <image stem>.txt files read from the photos elsewhere (ocr_macos.py): a receipt the
+    dataset gives no text for takes its text from there, before any OCR here."""
     stats = stats if stats is not None else Counter()
-    out = []
+    pending = []
     for key, entry in sorted(scan(root).items()):
         stats["files:" + "+".join(sorted(entry.get("formats", ())))] += 1
-        labels = dict(entry.get("labels", {}))
-        used_ocr = False
+        for name in set(entry.get("ignored_labels", ())):
+            stats[f"label_not_used:{name}"] += 1
+        labels, crops = dict(entry.get("labels", {})), {}
         for box in entry.get("boxes", []):
             field = field_of(box["label"])
             if not field or field in labels:
                 continue
-            value = box.get("text", "")
-            if not value and ocr and entry.get("image") and box.get("box"):
-                value = ocr.crop(entry["image"], box["box"])
-                used_ocr = True
-            if value:
-                labels[field] = value
+            if box.get("text"):
+                labels[field] = box["text"]
+                crops.pop(field, None)
+            elif ocr and entry.get("image") and box.get("box"):
+                crops.setdefault(field, []).append(box["box"])
         text = entry.get("text", "")
         if not text and entry.get("boxes") and all(b.get("text") for b in entry["boxes"]) \
                 and not all(field_of(b["label"]) for b in entry["boxes"]):
             ordered = sorted((b for b in entry["boxes"] if b.get("box")), key=lambda b: (b["box"][1], b["box"][0]))
             text = text_from_lines(b["text"] for b in ordered)
-        if not text and ocr and entry.get("image"):
-            text = ocr.full(entry["image"])
-            used_ocr = True
+        read_elsewhere = False
+        if not text and text_dir and entry.get("image"):
+            path = os.path.join(text_dir, stem_of(entry["image"]) + ".txt")
+            if os.path.exists(path):
+                text, read_elsewhere = read_text(path), True
+                stats["text_from_text_dir"] += 1
+        full = bool(not text and ocr and entry.get("image"))
+        if crops or full:
+            # no OCR for a receipt that has no total or merchant to read: it would be dropped anyway
+            missing = [f for f in ("total", "merchant") if not labels.get(f) and f not in crops]
+            if missing:
+                stats["dropped:no_" + missing[0]] += 1
+                continue
+        pending.append((key, entry, labels, crops, text, full, read_elsewhere))
+    jobs = [i for i, p in enumerate(pending) if p[3] or p[5]]
+    read = dict(zip(jobs, ocr.read_all([(pending[i][1]["image"], pending[i][3], pending[i][5]) for i in jobs])
+                    if jobs else []))
+    out = []
+    for index, (key, entry, labels, crops, text, full, read_elsewhere) in enumerate(pending):
+        used_ocr = index in read or read_elsewhere
+        if index in read:
+            fields, full_text, error = read[index]
+            if error:
+                stats["ocr_failed"] += 1
+                print(f"ocr failed on {entry['image']}: {error}", file=sys.stderr, flush=True)
+            labels.update({k: v for k, v in fields.items() if v})
+            text = text or full_text
         text = text_from_lines((text or "").splitlines())
         if not text:
             stats["dropped:no_text"] += 1
@@ -510,9 +634,13 @@ def times_in(text):
     return found
 
 
+SPLIT_DECIMALS = re.compile(r"(\d)([.,]) (\d{2})(?!\d)")
+
+
 def amounts_in(text, currency):
+    """Every amount printed in the text, also where OCR put a space after the decimal point ("5. 04")."""
     values = set()
-    for match in NUMBER.finditer(text):
+    for match in NUMBER.finditer(text + "\n" + SPLIT_DECIMALS.sub(r"\1\2\3", text)):
         value = minor_units(match.group(0).replace(" ", ""), currency)
         if value is not None:
             values.add(value)
@@ -569,9 +697,8 @@ def prepare(receipts, currency, day_first, stats):
         if not amount:
             stats["dropped:unreadable_total"] += 1
             continue
-        if amount not in amounts_in(text, code):
-            stats["dropped:total_not_in_text"] += 1
-            continue
+        # kept: a total misread or never printed is worked out from the other lines, and the gold has it
+        total_printed = amount in amounts_in(text, code)
         day = parse_date(labels.get("date", ""), day_first)
         if day is None:
             stats["dropped:no_date" if not labels.get("date") else "dropped:unreadable_date"] += 1
@@ -590,6 +717,9 @@ def prepare(receipts, currency, day_first, stats):
         traits = ["real_receipt"] + (["ocr_from_image"] if receipt["ocr"] else [])
         if day not in {parse_date(line, day_first) for line in text.splitlines()}:
             traits.append("date_not_matched_in_text")
+        if not total_printed:
+            traits.append("total_not_in_text")
+            stats["total_not_in_text"] += 1
         if len(text) > CONTENT_CHARACTER_LIMIT:
             traits.append("over_limit")
         out.append({"key": receipt["key"], "digest": digest, "text": text, "merchant": merchant,
@@ -704,9 +834,9 @@ def write_suite(folder, name, cases, users, extra):
     return meta
 
 
-def convert(root, seed, eval_share, currency, day_first, language, ocr=None):
+def convert(root, seed, eval_share, currency, day_first, language, ocr=None, text_dir=None):
     stats = Counter()
-    raw = receipts_from(root, ocr, stats)
+    raw = receipts_from(root, ocr, stats, text_dir)
     stats["parsed"] = len(raw)
     receipts = prepare(raw, currency, day_first, stats)
     stats["kept"] = len(receipts)
@@ -733,6 +863,8 @@ def main():
                     help="share of receipts whose merchant the user has filed before")
     ap.add_argument("--ocr", action="store_true", help="read text from images with tesseract where none is given")
     ap.add_argument("--ocr-languages", default="eng")
+    ap.add_argument("--text-dir", help="<image stem>.txt files read from the photos elsewhere, for example by "
+                    "ocr_macos.py: used where the dataset gives no text, before --ocr")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "suites"))
     args = ap.parse_args()
     if not args.train_name.startswith("train"):
@@ -742,13 +874,13 @@ def main():
 
     ocr = TesseractOCR(args.ocr_languages) if args.ocr else None
     stats, language, train, held = convert(args.source, args.seed, args.eval_share, args.currency, not args.month_first,
-                                           args.language, ocr)
+                                           args.language, ocr, args.text_dir)
     print(json.dumps(dict(sorted(stats.items())), indent=1))
     if not train and not held:
         raise SystemExit("no usable receipts: look at the counts above (files: shows the formats found)")
     common = {"seed": args.seed, "dataset": args.dataset, "evalShare": args.eval_share, "dayFirst": not args.month_first,
               "defaultCurrency": args.currency, "languageSetting": args.language, "ocr": args.ocr,
-              "ocrLanguages": args.ocr_languages if args.ocr else None, "trainCopies": args.train_copies,
+              "ocrLanguages": args.ocr_languages if args.ocr else None, "textDir": bool(args.text_dir), "trainCopies": args.train_copies,
               "knownShare": args.known_share, "casesPerUser": args.cases_per_user, "conversion": dict(stats)}
     for name, receipts, copies in ((args.train_name, train, args.train_copies), (args.eval_name, held, 1)):
         if not receipts:

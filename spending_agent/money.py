@@ -22,7 +22,10 @@ def minor_units(raw, currency):
     if value < 0:
         return None
     scale = 0 if currency.upper() in ZERO_DECIMAL_CURRENCIES else 2
-    return int((value * (Decimal(10) ** scale)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    try:
+        return int((value * (Decimal(10) ** scale)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    except InvalidOperation:  # more digits than the decimal context holds: a card or reference number, not money
+        return None
 
 
 def decimal_string(minor, currency):
