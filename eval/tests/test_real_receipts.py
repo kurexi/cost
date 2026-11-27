@@ -11,7 +11,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 import real_receipts as rr
-from grade import score_case
+from grade import names_match, score_case
 from suite import load_suite, materialize
 
 SROIE_TEXT = """72,25,326,25,326,64,72,64,TAN WOON YANN
@@ -167,10 +167,38 @@ class Parsing(Fixture):
                     receipt("Unihakka International", "dining", True),
                     receipt("Unihakka Interantional", "shopping", False)]
         stats = Counter()
-        rr.one_kind_per_merchant(receipts, stats)
+        rr.unify_merchants(receipts, stats)
         self.assertEqual([r["kind"] for r in receipts], ["home"] * 4 + ["dining"] * 2)
         self.assertTrue(all(r["kind_sure"] for r in receipts))
         self.assertEqual(stats["category_unified"], 3)
+        self.assertEqual(receipts[-1]["spellings"], ["Unihakka Interantional", "Unihakka International"])
+
+    def test_trading_names_branches_and_spellings_are_accepted(self):
+        accepted = rr.accepted_names("Unihakka International", "UNIHAKKA INTERNATIONAL SDN BHD")
+        self.assertTrue(names_match("Bar Wang Rice @Permas Jaya", accepted))
+        self.assertFalse(names_match("Old Asia", accepted))
+        accepted = rr.accepted_names("Aik Huat Hardware Enterprise (Setia Alam)",
+                                     "AIK HUAT HARDWARE ENTERPRISE (SETIA ALAM) SDN BHD")
+        self.assertTrue(names_match("AIK HUAT HARDWARE ENTERPRISE SDN BHD", accepted))
+        accepted = rr.accepted_names("Restoran Wan She", "RESTORAN WAN SHE", ["Restoran Wan She", "Restoran Wan Sheng"])
+        self.assertIn("Restoran Wan Sheng", accepted)
+
+    def test_a_credit_note_is_not_spending(self):
+        self.write("box/a.txt", "LIGHT SHOP SDN BHD\nCREDIT NOTE\n20/11/2017\nTOTAL 39.80")
+        self.write("key/a.txt", {"company": "LIGHT SHOP SDN BHD", "date": "20/11/2017", "total": "39.80"})
+        stats, _, train, held = rr.convert(self.root, 1, 0.0, "MYR", True, "en")
+        receipt = (train + held)[0]
+        self.assertFalse(receipt["spending"])
+        self.assertIn("credit_note", receipt["traits"])
+        cases, users = rr.build_split([receipt], "dev-x", 1, "en", 1, 8, 0.7)
+        self.assertFalse(cases[0]["gold"]["isSpending"])
+
+    def test_a_known_wrong_label_is_fixed(self):
+        self.write("box/a.txt", "Subway\nURBAN IDEA SDN BHD\n27/02/2018\nTotal RM24.00\nTotal-Excl-GST RM22.65")
+        self.write("key/a.txt", {"company": "URBAN IDEA SDN BHD", "date": "27/02/2018", "total": "RM22.65"})
+        stats, _, train, held = rr.convert(self.root, 1, 0.0, "MYR", True, "en")
+        self.assertEqual(stats["label_fixed"], 1)
+        self.assertEqual((train + held)[0]["amount"], 2400)
 
     def test_text_read_elsewhere_fills_in_for_the_dataset_and_tesseract(self):
         self.write("images/7.jpg", "not really an image")

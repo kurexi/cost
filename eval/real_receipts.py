@@ -81,6 +81,30 @@ CORE_KINDS = ("groceries", "dining", "coffee")
 LEGAL_SUFFIXES = re.compile(
     r"\b(sdn\.?\s*bhd\.?|bhd\.?|s/b|\(m\)|pte\.?\s*ltd\.?|ltd\.?|limited|inc\.?|llc|l\.l\.c\.|corp\.?|corporation|"
     r"gmbh|plc|s\.a\.r\.l\.?|sarl|s\.a\.?|suarl|co\.\s*,?\s*ltd\.?)(?=\W|$)", re.I)
+TRADING_NAMES = {
+    "unihakka": ("Bar Wang Rice",), "gerbangalaf": ("McDonald's",), "goldenarches": ("McDonald's",),
+    "ikanohandel": ("IKEA",), "urbanidea": ("Subway",), "cheflee": ("Old Asia",), "elitetrax": ("Harvey Norman",),
+    "tkdivisionkitchen": ("Kiku Japanese Restaurant",), "monsieur": ("Home's Harmony",),
+    "mizumentai": ("Sushi Mentai",), "kmffoodicious": ("Sushi Mentai",), "mentaiinitial": ("Sushi Mentai",),
+    "subanghealthcare": ("AA Pharmacy",), "ogngroup": ("Jimart",), "oldtownkopit": ("OldTown White Coffee",),
+    "exquisitegarden": ("OldTown White Coffee",), "grandcompanions": ("Tony Roma's",),
+    "anekaintertrade": ("Wellmart",), "trishaas": ("Mydin",), "alibabainternational": ("Salon Du Chocolat",),
+    "sayangyoustation": ("Juwita Weddings",), "dewinahost": ("Burger King",), "birupetroleum": ("Caltex",),
+    "platinumracking": ("Plat Mart",), "freedomoptimum": ("The GeoVenture",), "maxincome": ("FamilyMart",),
+    "haxincone": ("FamilyMart",), "securityoatrading": ("Biz Link",), "pacificasianfood": ("Win Soon Cafe",),
+    "kecharavegetarian": ("Kechara Oasis",), "globalfoodempire": ("Lemon Tree Restaurant",),
+    "pelitasamudra": ("Nasi Kandar Pelita",), "koreandine": ("Nam San Seoul Korean BBQ",),
+    "castleblue": ("Brewery Tap",), "tasteoftheworld": ("Geoventure",), "timelesskitchenette": ("Morganfield's",),
+    "tasleisure": ("Chili's",), "zawiajaya": ("Al Mendis",), "goldenscoop": ("Baskin Robbins",),
+    "littlecravings": ("Nyonya Colors",), "dommalfood": ("Domino's Pizza",), "baifu": ("Daiso",),
+    "trendymax": ("Sarang Hae Yo",), "ghdistributor": ("Ghee Hiang",), "rcventure": ("City Milk",),
+    "fourquarters": ("A Pie Thing",), "edenimpression": ("Sushi Q",), "ftofnoodle": ("Face To Face Noodle House",),
+    "tplusfb": ("Amphawa Thai Tea",), "doveholdings": ("Sizzling Stonegrill",), "rapidrail": ("rapidKL", "MRT"),
+    "esjayfuel": ("BHPetrol",), "pagohrest": ("myNEWS",), "beconenterprise": ("Becon Stationer",),
+    "anzeladvertising": ("EXPrint",),
+}
+LABEL_FIXES = {("URBAN IDEA SDN BHD", "27/02/2018", "RM22.65"): {"total": "RM24.00"}}
+CREDIT_NOTE = re.compile(r"\bcredit\s*note\b", re.I)
 REGISTRATION = re.compile(r"[\(\[]\s*(co\.?\s*(reg\.?|no\.?)?\s*:?)?\s*[A-Z]{0,3}\d{3,}[\w\-]*\s*[\)\]]", re.I)
 BOX_LINE = re.compile(r"^\s*-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?){7}\s*,(.*)$")
 TIME = re.compile(r"(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?(?:\s*([AaPp])\.?\s*[Mm]\.?)?(?![\d:])")
@@ -662,6 +686,15 @@ def clean_merchant(raw):
     return name
 
 
+def accepted_names(merchant, raw, spellings=()):
+    folded = re.sub(r"[^a-z0-9]", "", raw.lower())
+    names = {merchant, raw, re.sub(r"\s+", " ", re.sub(r"\([^)]*\)", " ", merchant)).strip(), *spellings}
+    for fragment, trading in TRADING_NAMES.items():
+        if fragment in folded:
+            names.update(trading)
+    return sorted(n for n in names if n)
+
+
 def words_in(text):
     text = re.sub(r"\b(?:[a-z]\.){2,}", lambda m: m.group(0).replace(".", ""), text.lower())
     return " " + " ".join(re.findall(r"[a-z0-9éèêàâûôîç]+", text)) + " "
@@ -681,7 +714,7 @@ def category_kind(merchant, text):
     return "shopping", False
 
 
-def one_kind_per_merchant(receipts, stats):
+def unify_merchants(receipts, stats):
     names = sorted({re.sub(r"[^a-z0-9]", "", words_in(r["merchant"])) for r in receipts})
     same = {name: name for name in names}
     for index, name in enumerate(names):
@@ -697,10 +730,11 @@ def one_kind_per_merchant(receipts, stats):
         votes = Counter(r["kind"] for r in voters)
         kind = min(votes, key=lambda k: (-votes[k], k))
         sure = any(r["kind_sure"] for r in group)
+        spellings = sorted({r["merchant"] for r in group})
         for receipt in group:
             if receipt["kind"] != kind:
                 stats["category_unified"] += 1
-            receipt["kind"], receipt["kind_sure"] = kind, sure
+            receipt["kind"], receipt["kind_sure"], receipt["spellings"] = kind, sure, spellings
     return receipts
 
 
@@ -708,6 +742,10 @@ def prepare(receipts, currency, day_first, stats):
     out, seen = [], set()
     for receipt in receipts:
         labels, text = receipt["labels"], receipt["text"]
+        fix = LABEL_FIXES.get((labels["merchant"].strip(), labels.get("date", "").strip(), labels["total"].strip()))
+        if fix:
+            labels = {**labels, **fix}
+            stats["label_fixed"] += 1
         digest = hashlib.sha256(re.sub(r"\s+", " ", text.lower()).encode("utf-8")).hexdigest()
         if digest in seen:
             stats["dropped:duplicate"] += 1
@@ -745,9 +783,14 @@ def prepare(receipts, currency, day_first, stats):
             stats["total_not_in_text"] += 1
         if len(text) > CONTENT_CHARACTER_LIMIT:
             traits.append("over_limit")
+        spending = not CREDIT_NOTE.search(text)
+        if not spending:
+            traits.append("credit_note")
+            stats["credit_note"] += 1
         out.append({"key": receipt["key"], "digest": digest, "text": text, "merchant": merchant,
                     "merchant_raw": re.sub(r"\s+", " ", labels["merchant"]).strip(), "currency": code,
-                    "amount": amount, "date": day, "time": when, "kind": kind, "kind_sure": sure, "traits": traits})
+                    "amount": amount, "date": day, "time": when, "kind": kind, "kind_sure": sure, "traits": traits,
+                    "spending": spending})
     return out
 
 
@@ -819,7 +862,7 @@ def make_user(rng, user_id, receipts, pool, currency, language, titles, known_sh
     cases = []
     for index, (receipt, known) in enumerate(plan):
         title = titles[receipt["kind"]]
-        accepted = sorted({receipt["merchant"], receipt["merchant_raw"]})
+        accepted = accepted_names(receipt["merchant"], receipt["merchant_raw"], receipt.get("spellings", ()))
         today = receipt["date"] + timedelta(days=rng.choice([0, 0, 1, 2, 3, 5, 9]))
         over = "over_limit" in receipt["traits"]
         traits = receipt["traits"] + ["known_merchant" if known else "new_merchant", f"category_{receipt['kind']}"]
@@ -827,7 +870,7 @@ def make_user(rng, user_id, receipts, pool, currency, language, titles, known_sh
             "id": f"{user_id}-{index:04d}", "user": user_id, "language": language, "homeLocale": "real",
             "style": "till", "traits": sorted(set(traits)), "today": today.isoformat(), "content": receipt["text"],
             "expectedStatus": "rejected_too_long" if over else "needs_review", "source": receipt["key"],
-            "gold": {"isSpending": True, "merchant": receipt["merchant"], "merchantAccepted": accepted,
+            "gold": {"isSpending": receipt["spending"], "merchant": receipt["merchant"], "merchantAccepted": accepted,
                      "paymentInstrument": "", "paymentInstrumentMode": "either", "paymentInstrumentAccepted": [],
                      "totalAmount": decimal_string(receipt["amount"], currency),
                      "amountMinorUnits": receipt["amount"], "currencyCode": currency,
@@ -861,7 +904,7 @@ def convert(root, seed, eval_share, currency, day_first, language, ocr=None, tex
     stats = Counter()
     raw = receipts_from(root, ocr, stats, text_dir)
     stats["parsed"] = len(raw)
-    receipts = one_kind_per_merchant(prepare(raw, currency, day_first, stats), stats)
+    receipts = unify_merchants(prepare(raw, currency, day_first, stats), stats)
     stats["kept"] = len(receipts)
     language = detect_language(receipts) if language == "auto" else language
     train = [r for r in receipts if split_of(r, eval_share, seed) == "train"]
