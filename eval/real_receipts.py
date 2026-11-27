@@ -101,9 +101,10 @@ TRADING_NAMES = {
     "fourquarters": ("A Pie Thing",), "edenimpression": ("Sushi Q",), "ftofnoodle": ("Face To Face Noodle House",),
     "tplusfb": ("Amphawa Thai Tea",), "doveholdings": ("Sizzling Stonegrill",), "rapidrail": ("rapidKL", "MRT"),
     "esjayfuel": ("BHPetrol",), "pagohrest": ("myNEWS",), "beconenterprise": ("Becon Stationer",),
-    "anzeladvertising": ("EXPrint",),
+    "anzeladvertising": ("EXPrint",), "cosway": ("Cosway",),
 }
 LABEL_FIXES = {("URBAN IDEA SDN BHD", "27/02/2018", "RM22.65"): {"total": "RM24.00"}}
+LARGEST_EVAL_SHOP = 0.25
 CREDIT_NOTE = re.compile(r"\bcredit\s*note\b", re.I)
 REGISTRATION = re.compile(r"[\(\[]\s*(co\.?\s*(reg\.?|no\.?)?\s*:?)?\s*[A-Z]{0,3}\d{3,}[\w\-]*\s*[\)\]]", re.I)
 BOX_LINE = re.compile(r"^\s*-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?){7}\s*,(.*)$")
@@ -686,13 +687,23 @@ def clean_merchant(raw):
     return name
 
 
-def accepted_names(merchant, raw, spellings=()):
+def trading_names(raw):
     folded = re.sub(r"[^a-z0-9]", "", raw.lower())
-    names = {merchant, raw, re.sub(r"\s+", " ", re.sub(r"\([^)]*\)", " ", merchant)).strip(), *spellings}
-    for fragment, trading in TRADING_NAMES.items():
-        if fragment in folded:
-            names.update(trading)
+    return next((trading for fragment, trading in TRADING_NAMES.items() if fragment in folded), ())
+
+
+def without_branch(merchant):
+    return re.sub(r"\s+", " ", re.sub(r"\([^)]*\)", " ", merchant)).strip()
+
+
+def accepted_names(merchant, raw, spellings=()):
+    names = {merchant, raw, without_branch(merchant), *spellings, *trading_names(raw)}
     return sorted(n for n in names if n)
+
+
+def shop_key(receipt):
+    trading = trading_names(receipt["merchant_raw"])
+    return re.sub(r"[^a-z0-9]", "", words_in(trading[0] if trading else without_branch(receipt["merchant"])))
 
 
 def words_in(text):
@@ -714,17 +725,25 @@ def category_kind(merchant, text):
     return "shopping", False
 
 
+def same_shop(name, other):
+    shorter, longer = sorted((name, other), key=len)
+    return (len(shorter) >= 6 and longer.startswith(shorter)) or \
+        (len(shorter) >= 8 and SequenceMatcher(None, name, other).ratio() >= 0.9)
+
+
 def unify_merchants(receipts, stats):
-    names = sorted({re.sub(r"[^a-z0-9]", "", words_in(r["merchant"])) for r in receipts})
+    names = sorted({shop_key(r) for r in receipts})
     same = {name: name for name in names}
     for index, name in enumerate(names):
         for other in names[:index]:
-            if len(name) >= 8 and SequenceMatcher(None, name, other).ratio() >= 0.9:
+            if same_shop(name, other):
                 same[name] = same[other]
                 break
     groups = defaultdict(list)
     for receipt in receipts:
-        groups[same[re.sub(r"[^a-z0-9]", "", words_in(receipt["merchant"]))]].append(receipt)
+        receipt["shop"] = same[shop_key(receipt)]
+        groups[receipt["shop"]].append(receipt)
+    stats["shops"] = len(groups)
     for group in groups.values():
         voters = [r for r in group if r["kind_sure"]] or group
         votes = Counter(r["kind"] for r in voters)
@@ -794,9 +813,19 @@ def prepare(receipts, currency, day_first, stats):
     return out
 
 
-def split_of(receipt, eval_share, seed):
-    roll = int(hashlib.sha256(f"{seed}-{receipt['digest']}".encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
-    return "eval" if roll < eval_share else "train"
+def split_by_shop(receipts, eval_share, seed):
+    shops = defaultdict(list)
+    for receipt in receipts:
+        shops[receipt["shop"]].append(receipt)
+    target = eval_share * len(receipts)
+    largest = target * LARGEST_EVAL_SHOP
+    held, count = set(), 0
+    for shop in sorted(shops, key=lambda s: hashlib.sha256(f"{seed}-{s}".encode()).hexdigest()):
+        size = len(shops[shop])
+        if size <= largest and count + size <= target:
+            held.add(shop)
+            count += size
+    return [r for r in receipts if r["shop"] not in held], [r for r in receipts if r["shop"] in held]
 
 
 def build_split(receipts, name, seed, language, copies, cases_per_user, known_share):
@@ -907,8 +936,8 @@ def convert(root, seed, eval_share, currency, day_first, language, ocr=None, tex
     receipts = unify_merchants(prepare(raw, currency, day_first, stats), stats)
     stats["kept"] = len(receipts)
     language = detect_language(receipts) if language == "auto" else language
-    train = [r for r in receipts if split_of(r, eval_share, seed) == "train"]
-    held = [r for r in receipts if split_of(r, eval_share, seed) == "eval"]
+    train, held = split_by_shop(receipts, eval_share, seed)
+    stats["eval_shops"] = len({r["shop"] for r in held})
     return stats, language, train, held
 
 

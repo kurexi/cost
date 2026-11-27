@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import shutil
@@ -160,7 +161,7 @@ class Parsing(Fixture):
 
     def test_a_merchant_keeps_one_category_across_its_receipts(self):
         def receipt(merchant, kind, sure):
-            return {"merchant": merchant, "kind": kind, "kind_sure": sure}
+            return {"merchant": merchant, "merchant_raw": merchant.upper(), "kind": kind, "kind_sure": sure}
 
         receipts = [receipt("Mr. D.I.Y. (M)", "home", True), receipt("Mr. D.I.Y. (M)", "groceries", False),
                     receipt("Mr. D.I.Y. (M)", "health", True), receipt("Mr. D.I.Y. (M)", "home", True),
@@ -182,6 +183,29 @@ class Parsing(Fixture):
         self.assertTrue(names_match("AIK HUAT HARDWARE ENTERPRISE SDN BHD", accepted))
         accepted = rr.accepted_names("Restoran Wan She", "RESTORAN WAN SHE", ["Restoran Wan She", "Restoran Wan Sheng"])
         self.assertIn("Restoran Wan Sheng", accepted)
+
+    def test_a_shops_receipts_stay_on_one_side_of_the_split(self):
+        def receipt(merchant, raw, index):
+            return {"merchant": merchant, "merchant_raw": raw, "kind": "dining", "kind_sure": True, "n": index}
+
+        receipts = [receipt("Gerbang Alaf Restaurants", "GERBANG ALAF RESTAURANTS SDN BHD", 0),
+                    receipt("Golden Arches Restaurants", "GOLDEN ARCHES RESTAURANTS SDN BHD", 1),
+                    receipt("Mr. D.I.Y. (Kuchai)", "MR. D.I.Y. (KUCHAI) SDN BHD", 2),
+                    receipt("Mr. D.I.Y. (M)", "MR. D.I.Y. (M) SDN BHD", 3),
+                    receipt("Restoran Wan She", "RESTORAN WAN SHE", 4),
+                    receipt("Restoran Wan Sheng", "RESTORAN WAN SHENG", 5)]
+        receipts += [receipt(f"Shop {chr(65 + i)}{chr(70 + i)}{chr(75 + i)}", f"SHOP {i}", 6 + i) for i in range(14)]
+        stats = Counter()
+        rr.unify_merchants(receipts, stats)
+        self.assertEqual(len({r["shop"] for r in receipts[:2]}), 1)
+        self.assertEqual(len({r["shop"] for r in receipts[2:4]}), 1)
+        self.assertEqual(len({r["shop"] for r in receipts[4:6]}), 1)
+        self.assertEqual(stats["shops"], 17)
+        for seed in range(20):
+            train, held = rr.split_by_shop(receipts, 0.25, seed)
+            self.assertFalse({r["shop"] for r in train} & {r["shop"] for r in held})
+            self.assertLessEqual(len(held), 5)
+            self.assertEqual(len(train) + len(held), len(receipts))
 
     def test_a_credit_note_is_not_spending(self):
         self.write("box/a.txt", "LIGHT SHOP SDN BHD\nCREDIT NOTE\n20/11/2017\nTOTAL 39.80")
@@ -279,7 +303,7 @@ class Suites(Fixture):
     def make_dataset(self, count=40):
         kinds = ["RESTORAN", "HARDWARE", "MINI MARKET", "PHARMACY", "BOOKSTORE"]
         for index in range(count):
-            name = f"{kinds[index % len(kinds)]} NUMBER{index} SDN BHD"
+            name = f"{kinds[index % len(kinds)]} {hashlib.sha256(str(index).encode()).hexdigest()[:8].upper()} SDN BHD"
             day = f"{1 + index % 27:02d}/0{1 + index % 9}/2019"
             text = f"{name}\nNO {index}, JALAN BUKIT\n{day} 1{index % 10}:2{index % 10}\nITEM A {index}.50\n" \
                    f"TOTAL RM {index + 1}.50\nCASH {index + 5}.00"
@@ -292,6 +316,8 @@ class Suites(Fixture):
         self.assertEqual(stats["kept"], 40)
         self.assertEqual(language, "en")
         self.assertFalse({r["digest"] for r in train} & {r["digest"] for r in held})
+        self.assertFalse({r["shop"] for r in train} & {r["shop"] for r in held})
+        self.assertEqual(len(held), 10)
         out = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, out)
         for name, receipts, copies in (("train-x", train, 2), ("dev-x", held, 1)):

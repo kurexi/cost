@@ -366,12 +366,18 @@ and a date becomes one till case:
   before, which decides the category. The other cases need the category
   read from the receipt, so they are kept only where keyword rules on the
   merchant's name or text are sure of it.
-- A receipt is dropped, and counted, when its labelled total isn't printed
-  in its text, its date can't be read, it prints several different times,
-  or its text repeats another receipt's.
-- The split is by a hash of the text: `--eval-share` (0.15) goes to the eval
-  suite and the rest to the train suite, so no receipt is in both. Each
-  train receipt goes to `--train-copies` users (2).
+- A receipt is dropped, and counted, when its date can't be read, it prints
+  several different times, or its text repeats another receipt's. A
+  labelled total that isn't printed legibly is kept, and the case is marked
+  `total_not_in_text`.
+- The split is by shop, so no shop is in both suites: a model that learned
+  a shop's layout and usual total in training gains nothing from it in the
+  eval suite. Receipts of one shop are grouped across legal names, trading
+  names, branches and misspellings. Shops are taken in an order hashed from
+  `--seed` into the eval suite until it holds `--eval-share` (0.15) of the
+  receipts. A shop with more than a quarter of that share stays in train,
+  so no one shop dominates the eval suite. Each train receipt goes to
+  `--train-copies` users (2).
 
 The train suite's name must start with `train` and the eval suite's must
 not, so only the train suite can be trained on. Both are git-ignored,
