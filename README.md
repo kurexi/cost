@@ -92,6 +92,33 @@ xychart-beta
 
 Every run, at every size, is in [eval/BENCHMARK.md](eval/BENCHMARK.md).
 
+## On real receipts
+
+`dev` is generated. `dev-receipts` is 134 real Malaysian till receipts from
+the Kaggle dataset
+[dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2),
+photos the model has never trained on. The photos were read with macOS's
+own OCR, so the agent gets what the app's OCR hands it: one line per piece
+of text, with labels and amounts often on different lines. The right
+answers come from the dataset's labels. The merchant also counts as right
+under the trading name its receipt prints, when that differs from the
+legal company name in the label.
+
+| | weights | records right on `dev-receipts` | amount right | wrong records it would file unreviewed | tool calls a case (wasted) | ran out of tool budget |
+|---|---|---|---|---|---|---|
+| 27B teacher | Qwen3.8-27B, FP8 | 90% (85%–96%) | 98% | 13% | 2.9 (0.1) | 1% of cases |
+| 0.8B as released | Qwen3.5-0.8B, FP16 | 16% (10%–22%) | 58% | 72% | 2.7 (1.0) | 16% of cases |
+| 0.8B trained, shipped | Qwen3.5-0.8B, Q8_0, 0.81 GB GGUF | 58% (50%–66%) | 75% | 21% | 1.6 (0.1) | 4% of cases |
+| 0.8B trained, 4-bit | Qwen3.5-0.8B, Q4_K_M, 0.53 GB GGUF | 52% (44%–60%) | 64% | 34% | 1.4 (0.0) | 0% of cases |
+
+Real receipts are harder than `dev` for the shipped model (58% against
+80%), but not for the teacher (90% against 89%). Most of the gap is the
+amount. Of the shipped model's 33 wrong amounts, 14 are the amount before
+GST, 8 the total before cash rounding, and 5 the cash handed over.
+[eval/real_receipts_eval.ipynb](eval/real_receipts_eval.ipynb) makes these
+runs, and [eval/real_receipts_sft.ipynb](eval/real_receipts_sft.ipynb) trains
+on the other receipts of the dataset.
+
 ## Six tools, a small budget
 
 The model has only these six tools, and every one of them reads the
