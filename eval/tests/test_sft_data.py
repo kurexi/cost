@@ -287,6 +287,13 @@ class RunCheckTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             sft_data.check_run(self.meta(contract="0000000000000000"))
 
+    def test_a_run_without_its_transcripts_is_refused(self):
+        with self.assertRaises(SystemExit):
+            sft_data.check_transcripts("teacher-train", "runs/teacher-train", [], {"c1", "c2"})
+        with self.assertRaises(SystemExit):
+            sft_data.check_transcripts("teacher-train", "runs/teacher-train", [{"id": "c1"}], {"c1", "c2"})
+        sft_data.check_transcripts("teacher-train", "runs/teacher-train", [{"id": "c1"}, {"id": "c2"}], {"c1", "c2"})
+
     def test_thinking_runs_are_refused(self):
         with self.assertRaises(SystemExit):
             sft_data.check_run(self.meta(reasoning_effort="low"))

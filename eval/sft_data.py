@@ -211,6 +211,14 @@ def doubted_case_ids(folder):
     return {row["id"] for row in per_case if row.get("answered") and not row.get("record_all")}
 
 
+def check_transcripts(name, folder, transcripts, graded):
+    missing = set(graded) - {transcript["id"] for transcript in transcripts}
+    if missing:
+        raise SystemExit(f"{name}: {len(missing)} of its {len(graded)} graded sessions have no transcript in "
+                         f"{os.path.join(folder, 'transcripts.jsonl')}. The pairs are built from the transcripts, "
+                         f"so copy that file back, or run the teacher again under a new name")
+
+
 def frozen_contents():
     contents = set()
     for name in FROZEN_SUITES:
@@ -359,6 +367,7 @@ def main():
     for folder, meta in zip(folders, metas):
         transcripts = read_jsonl(os.path.join(folder, "transcripts.jsonl"))
         keep = kept_case_ids(folder)
+        check_transcripts(meta["name"], folder, transcripts, keep | doubted_case_ids(folder))
         if args.verify_template and not per_run:
             kept = [t for t in transcripts if t["id"] in keep]
             print(f"template agrees with transformers on {verify_template(render, tokenizer, kept)} requests")
