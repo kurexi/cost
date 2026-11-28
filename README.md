@@ -119,8 +119,8 @@ wrong amounts, about 20 are the amount before tax or service charge, 8
 the total before cash rounding, 5 the cash handed over, and most of the
 rest one line or a subtotal instead of the total.
 [eval/real_receipts_eval.ipynb](eval/real_receipts_eval.ipynb) makes these
-runs, and [eval/real_receipts_sft.ipynb](eval/real_receipts_sft.ipynb) trains
-on the other receipts of the dataset.
+runs, and [eval/sft.ipynb](eval/sft.ipynb) trains on the other receipts of
+the dataset, beside the generated train suites.
 
 ## Six tools, a small budget
 

@@ -23,12 +23,11 @@ baseline_gguf_t4.ipynb a 0.8B as a GGUF (base or tuned, Q4_K_M to Q8_0) through 
 sft_data.py     SFT pairs from a teacher's sessions on train suites: every request rebuilt as the agent sent it
 train_sft.py    LoRA SFT on those pairs, the loss on completions only
 merge_lora.py   merges a train_sft.py adapter into a copy of the base checkpoint, in the layout llama.cpp converts
-sft_a100.ipynb  one round of distillation on Colab: teacher on train (A100, first round only), pairs, SFT, merge, optional bf16 score
+sft.ipynb       one round of distillation on Colab: the teacher on every train suite, generated and real (A100, once per suite), pairs, SFT, merge, bf16 scores
 train_grpo.py   GRPO from an SFT adapter: whole sessions of the real loop, sampled in-process and graded with the reward
 grpo.ipynb      GRPO on Colab (A100 or L4): train-rl suite, train_grpo.py, pick a kept step on val-rl, merge, bf16 score
 real_receipts.py turns a downloaded receipt dataset (OCR text or images, with labelled merchant, total and date) into a train suite and an eval suite
 real_receipts_eval.ipynb the baseline on real receipts from Kaggle, before any training on them: your Kaggle key at run time, convert, score the shipped GGUF, the untuned 0.8B and the teacher on dev-receipts, audit the gold
-real_receipts_sft.ipynb the SFT round after it: the teacher on train-receipts beside the generated suites, pairs, SFT, merge, scored against that baseline
 audit.py        the cases a run gets wrong, field by field, beside other runs' answers and the gold: where every run misses, suspect the gold
 suites/         dev (280 cases), dev-novel (280, invented merchants and items), dev-varied (280, varied tills) and holdout (140), committed and frozen
 novel_names.py  invents merchants and item names per simulated user, from two disjoint halves (train, eval)
@@ -260,7 +259,7 @@ only on cases from a train suite, never from `dev` or `holdout`.
 The student is Qwen3.5-0.8B and it has to ship at 1 GB or less. The order
 is SFT on the teacher's sessions, then GRPO, then quantization, and each
 step is scored as a GGUF through `llama-server` on the T4, like the
-baselines. `sft_a100.ipynb` runs one SFT round from start to finish. The
+baselines. `sft.ipynb` runs one SFT round from start to finish. The
 teacher's steps run once, on an A100; a later round finds their output on
 Drive, skips them, and runs on an L4:
 
@@ -269,9 +268,12 @@ Drive, skips them, and runs on an L4:
    `runs/teacher-train` and `train-2` (`make_suite.py --name train-2
    --per-locale 600 --users-per-locale 60 --seed 4 --novel-share 0.5`:
    4,200 cases, 420 users, fingerprint `9c208ad58ed4d37a`, git-ignored) as
-   `runs/teacher-train-2`, and on `dev-novel` for its row there;
-2. `sft_data.py teacher-train teacher-train-2` → one pairs file from every
-   run named (with `--doubt-confidence` for the wrong drafts);
+   `runs/teacher-train-2`, and the real receipts' `train-receipts` (see
+   *Real receipts*) as `runs/teacher-train-receipts`; then on `dev-novel`
+   and `dev-receipts` for its rows there;
+2. `sft_data.py teacher-train teacher-train-2 teacher-train-receipts` → one
+   pairs file from every run named (with `--doubt-confidence` for the wrong
+   drafts). It stops if a run's `transcripts.jsonl` is missing;
 3. `train_sft.py` → a LoRA adapter (`LOSS` in the
    notebook: per token);
 4. `merge_lora.py` → a merged Hugging Face folder, which
@@ -409,12 +411,11 @@ gold is the first suspect: a currency that is never printed, swapped day
 and month, or a category the keyword rules got wrong. A suite whose gold is
 wrong is rebuilt before anything is trained on it.
 
-`real_receipts_sft.ipynb` is the round after that. It runs the teacher on
-`train-receipts` beside the generated train suites, then the pairs and SFT
-as in `sft_a100.ipynb`, the merge, and bf16 scores on `dev`, `dev-novel`
-and `dev-receipts` against the baseline rows. Both notebooks take the same
-conversion settings, and each stops if the suites on Drive were built with
-others.
+`sft.ipynb` then trains on `train-receipts` beside the generated train
+suites (see *Distilling the teacher*) and scores the result on `dev`,
+`dev-novel` and `dev-receipts` against these baseline rows. Both notebooks
+take the same conversion settings, and each stops if the suites on Drive
+were built with others.
 
 ## GRPO
 
