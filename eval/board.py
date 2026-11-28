@@ -24,7 +24,7 @@ BOARD_SUITES = ("dev", "dev-novel")
 
 def table(entries):
     head = ("| run | model | contract | n | record_core (95% CI) | record_all | reward | amount | merchant | "
-            "category | tags | false approvals | s/case | tools/case |")
+            "category | tags | false approvals | tools/case |")
     lines = [head, "|" + "---|" * (head.count("|") - 1)]
     for name, summary in entries:
         o, p, m = summary["overall"], summary["process"], summary["meta"]
@@ -35,7 +35,7 @@ def table(entries):
         lines.append(f"| {name} | {model} | `{m['contract']}` | {o['n']} | {o['record_core']:.3f} ({lo:.2f}–{hi:.2f}) "
                      f"| {o['record_all']:.3f} | {o['reward']:.3f} | {o['amount']:.2f} | {o['merchant']:.2f} "
                      f"| {o['category']:.2f} | {o['tags']:.2f} | {o['false_approval']:.3f} "
-                     f"| {p.get('seconds', 0):.1f} | {p.get('tool_calls', 0):.2f} |")
+                     f"| {p.get('tool_calls', 0):.2f} |")
     return "\n".join(lines)
 
 

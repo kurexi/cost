@@ -1,7 +1,11 @@
+*
+!runs/
+!runs/*/
+!.gitignore
+!runs/*/meta.json
+!runs/*/server.json
 runs/oracle*/
 runs/silent*/
 runs/smoke*/
-runs/qwen3.8-27b-fp8-v4/
 runs/check-*/
-runs/teacher-train*/transcripts.jsonl
-sft/*.jsonl
+runs/teacher-*/

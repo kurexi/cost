@@ -18,16 +18,17 @@ charts.py       the README's charts (charts/*.svg, light and dark) from the grad
 BENCHMARK.md    how the small model does: every graded dev and dev-novel run, without how it was served
 backends.py     oracle (answers the gold, must grade perfect) and silent (the floor)
 probe_formats.py asks a server which answer schemas it accepts, in seconds, before a run
-baseline_t4.ipynb the ~1B baseline (Qwen3.5-0.8B, fp16, vLLM) on a Colab T4, set up like the teacher's run
-baseline_gguf_t4.ipynb a 0.8B as a GGUF (base or tuned, Q4_K_M to Q8_0) through llama-server on a Colab T4: the shippable-size scores
+baseline.ipynb  the ~1B baseline (Qwen3.5-0.8B, fp16, vLLM), set up like the teacher's run
+baseline_gguf.ipynb a 0.8B as a GGUF (base or tuned, Q4_K_M to Q8_0) through llama-server: the shippable-size scores
 sft_data.py     SFT pairs from a teacher's sessions on train suites: every request rebuilt as the agent sent it
 train_sft.py    LoRA SFT on those pairs, the loss on completions only
 merge_lora.py   merges a train_sft.py adapter into a copy of the base checkpoint, in the layout llama.cpp converts
-sft.ipynb       one round of distillation on Colab: the teacher on every train suite, generated and real (A100, once per suite), pairs, SFT, merge, bf16 scores
+sft.ipynb       one round of distillation: the teacher on every train suite, generated and real, pairs, SFT, merge, bf16 scores
 train_grpo.py   GRPO from an SFT adapter: whole sessions of the real loop, sampled in-process and graded with the reward
-grpo.ipynb      GRPO on Colab (A100 or L4): train-rl suite, train_grpo.py, pick a kept step on val-rl, merge, bf16 score
-real_receipts.py turns a downloaded receipt dataset (OCR text or images, with labelled merchant, total and date) into a train suite and an eval suite
-real_receipts_eval.ipynb the baseline on real receipts from Kaggle, before any training on them: your Kaggle key at run time, convert, score the shipped GGUF, the untuned 0.8B and the teacher on dev-receipts, audit the gold
+grpo.ipynb      GRPO: train-rl suite, train_grpo.py, pick a kept step on val-rl, merge, bf16 score
+real_receipts.py turns a receipt dataset (OCR text or images, with labelled merchant, total and date) into a train suite and an eval suite
+ocr_macos.py    reads receipt photos into text with macOS's own OCR, as the app does, for real_receipts.py --text-dir
+real_receipts_eval.ipynb the baseline on real receipts, before any training on them: convert, score the shipped GGUF, the untuned 0.8B and the teacher on dev-receipts, audit the gold
 audit.py        the cases a run gets wrong, field by field, beside other runs' answers and the gold: where every run misses, suspect the gold
 suites/         dev (280 cases), dev-novel (280, invented merchants and items), dev-varied (280, varied tills) and holdout (140), committed and frozen
 novel_names.py  invents merchants and item names per simulated user, from two disjoint halves (train, eval)
@@ -37,11 +38,35 @@ runs/           one folder per run: meta, results, transcripts, grade (in the re
 **Where runs are kept.** `run.py`, `grade.py`, `compare.py`, `board.py` and
 `sft_data.py` read and write `runs/<name>/`, and `board.py --write` the
 `RESULTS.md` leaderboard, in the records folder: `$SPENDING_EVAL_RECORDS`
-when it is set, otherwise this folder (where both are git-ignored). The runs
-behind `BENCHMARK.md`, with their training logs and notes, are in the
-repository's `eval-records/`; point `SPENDING_EVAL_RECORDS` there to grade,
-compare or extend them, or at a folder of your own for your own runs.
-`board.py --write` starts a `RESULTS.md` there if there is none.
+when it is set, otherwise this folder (where both are git-ignored). The
+repository's `eval-records/` holds the metadata of the runs behind
+`BENCHMARK.md`; point `SPENDING_EVAL_RECORDS` there, or at a folder of your
+own. `board.py --write` starts a `RESULTS.md` there if there is none, and
+`board.py --publish` and `charts.py` draw `BENCHMARK.md`, the README's
+tables and the charts from the graded runs in it.
+
+## What is published
+
+- **In this repository:** the code, the frozen evaluation suites
+  (`suites/dev`, `dev-novel`, `dev-varied`, `holdout`), the scores
+  (`BENCHMARK.md`, the README's tables and the charts), and in
+  `eval-records/` the metadata of the benchmark's runs: each run's
+  `meta.json` (suite and contract fingerprints, agent code, run settings)
+  and `server.json` (the weights' hash, the llama.cpp release and the
+  server's flags). With them the benchmark can be repeated as it was
+  made.
+- **On Hugging Face:** the shipped models, as GGUF files
+  ([kurexi/cost-0.8b-q8](https://huggingface.co/kurexi/cost-0.8b-q8),
+  [kurexi/cost-0.8b-q4_k_m](https://huggingface.co/kurexi/cost-0.8b-q4_k_m)).
+- **Not published:** what the runs generate (each run's sessions, grades
+  and transcripts, and `RESULTS.md`), the records of the training steps
+  (SFT and GRPO), the training pairs, the adapters and merged checkpoints, and everything made from the
+  real receipts. The receipt suites hold the receipts' text and the
+  runs on them quote it, and the dataset's licence decides what may be
+  republished, so the real-receipt scores are given as totals only. The
+  generated train suites (`train`, `train-2`, `train-rl`, `val-rl`) aren't
+  committed either: they are rebuilt from their seeds and checked against
+  their fingerprints, so they are the same suites every time.
 
 ## The suites
 
@@ -240,7 +265,7 @@ small differences with that in mind.
 ## Comparing a student with its baseline
 
 ```bash
-python3 compare.py bonsai-27b qwen-0.8b-sft-r1 qwen-0.8b-grpo-r2
+python3 compare.py qwen3.5-0.8b-q8_0 qwen3.5-0.8b-grpo-r2-q8_0
 ```
 
 The first run is the baseline. Each later run gets a change per metric, with
@@ -258,10 +283,9 @@ only on cases from a train suite, never from `dev` or `holdout`.
 
 The student is Qwen3.5-0.8B and it has to ship at 1 GB or less. The order
 is SFT on the teacher's sessions, then GRPO, then quantization, and each
-step is scored as a GGUF through `llama-server` on the T4, like the
-baselines. `sft.ipynb` runs one SFT round from start to finish. The
-teacher's steps run once, on an A100; a later round finds their output on
-Drive, skips them, and runs on an L4:
+step is scored as a GGUF through `llama-server`, like the baselines.
+`sft.ipynb` runs one SFT round from start to finish, and reuses a teacher
+run that is already finished:
 
 1. the teacher (`Qwen/Qwen3.8-27B-FP8` on vLLM, its `dev` settings) on one
    or more train suites (see *The suites*), for example `train` as
@@ -277,7 +301,7 @@ Drive, skips them, and runs on an L4:
 3. `train_sft.py` → a LoRA adapter (`LOSS` in the
    notebook: per token);
 4. `merge_lora.py` → a merged Hugging Face folder, which
-   `baseline_gguf_t4.ipynb` (`SOURCE`, `NAME`) converts and scores on `dev`
+   `baseline_gguf.ipynb` (`SOURCE`, `NAME`) converts and scores on `dev`
    and `dev-novel` as `<NAME>-q8_0`, `<NAME>-q8_0-dev-novel`,
    `<NAME>-q4_k_m`, `<NAME>-q4_k_m-dev-novel`. The untuned 0.8B needs its
    `dev-novel` rows too: the same notebook with `SUITES = ["dev-novel"]`.
@@ -318,11 +342,11 @@ checkpoint (`Qwen3_5ForConditionalGeneration`,
 weight it adapts and copies everything else unchanged. Its test checks the
 result against `peft`'s own merge on a tiny Qwen3.5.
 
-Of a teacher run, keep `meta.json`, `results.jsonl` and `grade.json` with
-your records. Its transcripts, the training material, are tens of
-megabytes; keep them on Drive, out of git, and the pairs too. The notebooks
-put each round's pair counts, adapter config, training arguments
-(`train_args.json`), train log and merge report in `sft/<round>/`.
+Training is a step towards the model, not part of the benchmark, so none
+of it is committed: not the teacher's runs on the train suites (their
+transcripts, the training material, are tens of megabytes), the pairs, or
+the pair counts, adapter config, training arguments (`train_args.json`),
+train log and merge report the notebooks keep in `sft/<round>/`.
 
 **Why the loss is averaged per token.** Averaged per sequence, a stop at
 the end of the tool phase is a single `<|im_end|>`, so it puts its
@@ -385,16 +409,12 @@ The train suite's name must start with `train` and the eval suite's must
 not, so only the train suite can be trained on. Both are git-ignored,
 because the dataset's licence decides what may be published.
 
-**Evaluate before training.** `real_receipts_eval.ipynb` runs on Colab
-with [dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2).
-It downloads the dataset with your Kaggle key, which is read from Colab's
-secrets or typed into a hidden prompt, and passed only to the `kaggle`
-command. It prints what the dataset holds and converts it, keeping the
-suites on Drive. Then it scores these on `dev-receipts`:
+**Evaluate before training.** `real_receipts_eval.ipynb` converts the
+dataset and scores these on `dev-receipts`:
 - the shipped file (`kurexi/cost-0.8b-q8`, checked by SHA-256) and the
-  4-bit one, through llama-server as in `baseline_gguf_t4.ipynb`. The
-  shipped file is also rerun on `dev` and compared with its committed row,
-  so a change of server or GPU can't pass for a change in the model;
+  4-bit one, through llama-server as in `baseline_gguf.ipynb`. The
+  shipped file is also rerun on `dev` and compared with its earlier `dev`
+  run, so a change of server can't pass for a change in the model;
 - the untuned 0.8B at fp16, the floor;
 - the teacher, the ceiling.
 
@@ -413,9 +433,7 @@ wrong is rebuilt before anything is trained on it.
 
 `sft.ipynb` then trains on `train-receipts` beside the generated train
 suites (see *Distilling the teacher*) and scores the result on `dev`,
-`dev-novel` and `dev-receipts` against these baseline rows. Both notebooks
-take the same conversion settings, and each stops if the suites on Drive
-were built with others.
+`dev-novel` and `dev-receipts` against these baseline rows.
 
 ## GRPO
 

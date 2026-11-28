@@ -90,12 +90,12 @@ xychart-beta
   <img alt="Records right on dev by language, for the 27B teacher, the 0.8B as released and the shipped 0.8B" src="eval/charts/languages-light.svg">
 </picture>
 
-Every run, at every size, is in [eval/BENCHMARK.md](eval/BENCHMARK.md).
+The full scores are in [eval/BENCHMARK.md](eval/BENCHMARK.md).
 
 ## On real receipts
 
 `dev` is generated. `dev-receipts` is 128 real till receipts, nearly all
-Malaysian, from the Kaggle dataset
+Malaysian, from the dataset
 [dhiaznaidi/receiptdatasetssd300v2](https://www.kaggle.com/datasets/dhiaznaidi/receiptdatasetssd300v2).
 They come from 72 shops, and no receipt from those shops is used in
 training. The photos were read with macOS's own OCR, so the agent gets
@@ -210,5 +210,5 @@ window is enough.
 ## More
 
 - [USAGE.md](USAGE.md): running the agent on your own ledger.
-- [eval/README.md](eval/README.md): the evaluation suites, the grader, and
-  how the 0.8B was distilled and trained.
+- [eval/README.md](eval/README.md): the evaluation suites, the grader, how
+  the 0.8B was distilled and trained, and what is published.
